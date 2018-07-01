@@ -49,8 +49,8 @@ def get_bool(text_to_display='', nothing_as_None=False):
 class UserInterface:
     def __init__(self):
         self.f_mng = FileManager()
-     
-        
+
+
         parser = argparse.ArgumentParser(description='Cleaning trash '
                 +'created by sending docs to Kindle via Internet')
 
@@ -61,25 +61,27 @@ class UserInterface:
 
         #group = parser.add_mutually_exclusive_group()
         group = parser
-       
-        only_display__mode = group.add_argument_group('only display') 
-        only_display__mode.add_argument('-P', '--only-display', action='store_true', 
+
+        only_display__mode = group.add_argument_group('only display')
+        only_display__mode.add_argument('-P', '--only-display', action='store_true',
                 help='only display info')
 
-        normal_mode = group.add_argument_group('normal') 
+        normal_mode = group.add_argument_group('normal')
         normal_mode.add_argument('-f', '--force', action='store_true',
                 help='force - agree for all move and remove operation')
-        normal_mode.add_argument('-p', '--print', action='store_true', 
+        normal_mode.add_argument('-p', '--print', action='store_true',
                 help='display info')
-        normal_mode.add_argument('-r', '--recursive', action='store_true', 
+        normal_mode.add_argument('-r', '--recursive', action='store_true',
                 help='scan in subfolders')
-        
+
 
         args = parser.parse_args()
 
         if args.main_path:
             debug('main_path: '+args.main_path[0],active_debugging=False)
             self.f_mng.main_path = args.main_path[0]
+            self.f_mng.send_to_kindle_dir_path(
+                    name=self.f_mng.send_to_kindle_default_name)
         if args.stk_dir_name:
             debug('stk_dir_name: '+args.stk_dir_name[0],active_debugging=False)
             self.f_mng.send_to_kindle_dir_path(name=args.stk_dir_name[0])
@@ -92,7 +94,7 @@ class UserInterface:
             self.f_mng.find_data_files()
         if args.only_display:
             debug('only display',active_debugging=False)
-            self.f_mng.print_data()      
+            self.f_mng.print_data()
         else:
 
             if args.force:
@@ -105,9 +107,9 @@ class UserInterface:
                 self.f_mng.remove(force=False)
             if args.print:
                 debug('display info',active_debugging=False)
-                self.f_mng.print_data()      
-            
-            
+                self.f_mng.print_data()
+
+
 
 
 class FileManager:
@@ -115,21 +117,22 @@ class FileManager:
         self.data_container = list()
         self.dir_to_check = list()
         self.files_to_move = list()
+        self.send_to_kindle_default_name = 'send_to_kindle'
         self.main_path = os.getcwd()
-        self.send_to_kindle_dir_path(name='send_to_kindle')
+        self.send_to_kindle_dir_path(name=self.send_to_kindle_default_name)
 
-        
+
     def find_data_files(self, path=None):
         if path is None:
             path = self.main_path
         path_list = list()
         for tmp in  os.scandir(path):
-            path_list.append(tmp.path)        
+            path_list.append(tmp.path)
         for tmp in os.scandir(path):
             if not tmp.name.startswith('.') and tmp.is_dir():
 
                 if tmp.name.endswith('.sdr'):
-                    common_path_part = tmp.path.replace('.sdr','')                        
+                    common_path_part = tmp.path.replace('.sdr','')
                     common_path_files_list = list()
                     for i in path_list:
                         if i.startswith(common_path_part):
@@ -164,7 +167,7 @@ class FileManager:
                 remove = True
             if remove:
                 shutil.rmtree(i.path)
-            
+
     def move(self, force=False):
         debug('\n\tMove elements')
         try:
@@ -189,9 +192,9 @@ class FileManager:
 
     def send_to_kindle_dir_path(self, name):
         if self.main_path.endswith(os.sep):
-            self.send_to_kindle_path = self.main_path + str(name) 
+            self.send_to_kindle_path = self.main_path + str(name)
         else:
-            self.send_to_kindle_path = self.main_path + os.sep + str(name) 
+            self.send_to_kindle_path = self.main_path + os.sep + str(name)
 
 
     def print_data(self):
