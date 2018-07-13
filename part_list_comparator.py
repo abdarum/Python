@@ -7,7 +7,6 @@ import sys
 import argparse
 
 
-
 class UserInterface:
     def __init__(self):
         self.cont = Container()
@@ -18,6 +17,9 @@ class UserInterface:
                 help='path to file to check')
         parser.add_argument('-k', '--ktm-code-log', action='store', nargs=1,
                 help='path to file with ktm codes')
+        parser.add_argument('-d', '--disp-code-to-check', action='store_true',
+                help='display code to check')
+
         """
         parser.add_argument('-o', '--log-name', action='store', nargs=1,
                 help='path to log file')
@@ -25,32 +27,29 @@ class UserInterface:
 
         args = parser.parse_args()
 
-        if args.input_name:
-            print(args.input_name[0])
-            self.cont.csv_read(filename=args.input_name[0])
-            #read this csv
 
-        if args.ktm_code_log:
-            self.cont.print_to_check(args.ktm_code_log[0])
+        if args.input_name:
+            self.cont.csv_read(filename=args.input_name[0])
+
+            self.cont.sort_by()
+            self.cont.group()
+
+            self.cont.find_diff_group()
+            self.cont.print_diff()
+
+            if args.ktm_code_log:
+                self.cont.print_to_check(args.ktm_code_log[0])
+            else:
+                if args.disp_code_to_check:
+                    self.cont.print_to_check()
 
         """
         if args.log_name:
             pass
             #self.f_mng.send_to_kindle_dir_path(name=args.stk_dir_name[0])
         """
-
-        self.cont.sort_by()
-        self.cont.group()
-        #self.cont.print_by_group()
-
-        print(self.cont.cont_conf.max_c_idx())
-
-        self.cont.find_diff_group()
-        self.cont.print_diff()
-
-        #self.cont.print_to_check()
-
-
+        if len(sys.argv)==1:
+            parser.print_help()
 
 class DataIndex:
     def __init__(self, name, f_col=None,
@@ -70,7 +69,6 @@ class DataIndex:
         print('Index in container: ',self.c_idx)
         print('Description: ',self.descr)
         print('Can be diffrent in elements: ',self.diffrent)
-
 
 
 class DataConfiguration:
@@ -127,16 +125,14 @@ class DataConfiguration:
     def name_c_idx(self,c_idx):
          for i in self.conf_list:
             if i.c_idx == c_idx:
-                return i.name 
+                return i.name
          return None
 
     def descr_c_idx(self,c_idx):
          for i in self.conf_list:
             if i.c_idx == c_idx:
-                return i.descr 
+                return i.descr
          return None
-
-       
 
 
 class Container:
@@ -148,11 +144,6 @@ class Container:
         self.diff_group = list()
         self.tmp_sort_key = None
 
-        
-
-    def read_file(self, input_file=None):
-        pass
-
     def csv_read(self, filename, input_data_format='format_1',
             remove=False):
         """Read data from CSV file
@@ -161,10 +152,6 @@ class Container:
             format_1
             format_2
         """
-
-        print(filename)
-
-
         if input_data_format is 'format_1':
             #with open(filename, newline='', encoding='utf-8') as csvfile:
             with open(filename, 'rb') as csvfile:
@@ -172,8 +159,6 @@ class Container:
                 for row in reader:
                     #print('\t'.join(row))
                     self.main_list.append(row)
-
-
 
 
         elif input_data_format is 'format_2':
@@ -191,12 +176,11 @@ class Container:
     def print_by_group(self):
         for i in self.group_list:
             print("\n\n")
-            print(i) 
+            print(i)
             print('')
 
     def sort_tmp_key(self, elem):
         return elem[self.tmp_sort_key]
-
 
     def sort_by_key(self,elem):
         return elem[self.cont_conf.sort_key_idx]
@@ -209,12 +193,12 @@ class Container:
             for i in range(1, len(self.main_list)):
                 if len(self.group_list):
                     if self.main_list[i-1][self.cont_conf.sort_key_idx] \
-                        == self.main_list[i][self.cont_conf.sort_key_idx]: 
+                        == self.main_list[i][self.cont_conf.sort_key_idx]:
                          self.group_list[-1].append(self.main_list[i])
                     else:
                         self.group_list.append([])
                         self.group_list[-1].append(self.main_list[i])
- 
+
                 else:
                     self.group_list.append([])
                     self.group_list[-1].append(self.main_list[0])
@@ -234,7 +218,7 @@ class Container:
                                     [
                                     i[grp_elem_idx-1],
                                     i[grp_elem_idx],
-                                    idx, 
+                                    idx,
                                     self.cont_conf.name_c_idx(idx),
                                     self.cont_conf.descr_c_idx(idx)])
 
@@ -243,7 +227,7 @@ class Container:
             print('\n\n')
             print(i)
             print('')
-            print("KTM codei: "+str(i[0][self.cont_conf.\
+            print("KTM code: "+str(i[0][self.cont_conf.\
                 c_idx_of('ktm_code')]))
 
             print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],'Part',i[0][9])
@@ -259,27 +243,32 @@ class Container:
         list_of_not_check = list()
         for i in self.group_list:
             list_of_main_parameter.append(i[0]\
-                [self.cont_conf.sort_key_idx])   
-        if log_file_check==None:
+                [self.cont_conf.sort_key_idx])
+
+        if log_file_check == None:
             list_of_not_check = list_of_main_parameter
+            for i in list_of_not_check:
+                print(i)
         else:
             if os.path.exists(log_file_check):
                 with open(log_file_check, 'rb') as csvfile:
-                    reader = csv.reader(csvfile, delimiter=';')
+                    reader = csv.reader(csvfile, delimiter='\t')
                     for row in reader:
                         if len(row)>1:
-                            if row[1]:
+                            if row[1] == '0':
                                 list_of_not_check.append(row[0])
+                for i in list_of_not_check:
+                    print(i)
             else:
                 for i in list_of_main_parameter:
                     print(i)
                 with open(log_file_check, 'wb') as csvfile:
-                    spamwriter = csv.writer(csvfile, delimiter=';',
+                    spamwriter = csv.writer(csvfile, delimiter='\t',
                                             quoting=csv.QUOTE_NONE)
                     for i in list_of_main_parameter:
                         spamwriter.writerow([i,0])
 
-        for i in list_of_not_check:
-            print(i)
+
+
 
 UserInterface()
