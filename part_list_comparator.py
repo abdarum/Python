@@ -223,24 +223,38 @@ class Container:
                                     self.cont_conf.descr_c_idx(idx)])
 
     def print_diff(self):
-        for i in self.diff_group:
-            print('\n\n')
-            print(i)
-            print('')
-            print("KTM code: "+str(i[0][self.cont_conf.\
-                c_idx_of('ktm_code')]))
+        if len(self.diff_group):
+            print("\n\n\n\tDiffrences\n\n\n")
+            for i in self.diff_group:
+                print('\n\n')
+                print(i)
+                print('')
+                print("KTM code: "+str(i[0][self.cont_conf.\
+                    c_idx_of('ktm_code')]))
 
-            print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],'Part',i[0][9])
-            print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],'Part',i[1][9])
+                print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],'Part',i[0][9])
+                print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],'Part',i[1][9])
 
 
-            print('Diffrence:')
-            print(i[0][i[2]])
-            print(i[1][i[2]])
+                print('Diffrence:')
+                print(i[0][i[2]])
+                print(i[1][i[2]])
+        else:
+            print("\n\tThere is no diffrences\n")
 
-    def print_to_check(self, log_file_check=None):
+    def is_on_list(self, elem, list, idx):
+        try:
+            for i in list:
+                if i[idx] == elem:
+                    return True
+            return False
+        except:
+            return None
+
+    def print_to_check(self, log_file_check=None, save_change=True):
         list_of_main_parameter = list()
         list_of_not_check = list()
+        list_check_file = list()
         for i in self.group_list:
             list_of_main_parameter.append(i[0]\
                 [self.cont_conf.sort_key_idx])
@@ -254,20 +268,26 @@ class Container:
                 with open(log_file_check, 'rb') as csvfile:
                     reader = csv.reader(csvfile, delimiter='\t')
                     for row in reader:
-                        if len(row)>1:
-                            if row[1] == '0':
-                                list_of_not_check.append(row[0])
-                for i in list_of_not_check:
-                    print(i)
+                        list_check_file.append(row)
+                for i in list_of_main_parameter:
+                    if self.is_on_list(i,list_check_file,0):
+                        pass
+                    else:
+
+                        list_check_file.append([i,'0'])
             else:
                 for i in list_of_main_parameter:
-                    print(i)
-                with open(log_file_check, 'wb') as csvfile:
-                    spamwriter = csv.writer(csvfile, delimiter='\t',
-                                            quoting=csv.QUOTE_NONE)
-                    for i in list_of_main_parameter:
-                        spamwriter.writerow([i,0])
+                    list_check_file.append([i,'0'])
+        with open(log_file_check, 'wb') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter='\t',
+                                    quoting=csv.QUOTE_NONE)
+            for i in list_check_file:
+                spamwriter.writerow(i)
 
+        for i in list_check_file:
+                if len(i)>1:
+                    if i[1] == '0':
+                        print(i[0])
 
 
 
