@@ -1,10 +1,108 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import csv
+import csv, codecs, cStringIO
 import os
 import sys
 import argparse
+import shutil
+
+
+
+
+class UTF8Recoder:
+    """
+    Iterator that reads an encoded stream and reencodes the input to UTF-8
+    """
+    def __init__(self, f, encoding):
+        self.reader = codecs.getreader(encoding)(f)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return self.reader.next().encode("utf-8")
+
+class UnicodeReader:
+    """
+    A CSV reader which will iterate over lines in the CSV file "f",
+    which is encoded in the given encoding.
+    """
+
+    def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
+        f = UTF8Recoder(f, encoding)
+        self.reader = csv.reader(f, dialect=dialect, **kwds)
+
+    def next(self):
+        row = self.reader.next()
+        return [unicode(s, "utf-8") for s in row]
+
+    def __iter__(self):
+        return self
+
+class UnicodeWriter:
+    """
+    A CSV writer which will write rows to CSV file "f",
+    which is encoded in the given encoding.
+    """
+
+    def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
+        # Redirect output to a queue
+        self.queue = cStringIO.StringIO()
+        self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
+        self.stream = f
+        self.encoder = codecs.getincrementalencoder(encoding)()
+
+    def writerow(self, row):
+        self.writer.writerow([s.encode("utf-8") for s in row])
+        # Fetch UTF-8 output from the queue ...
+        data = self.queue.getvalue()
+        data = data.decode("utf-8")
+        # ... and reencode it into the target encoding
+        data = self.encoder.encode(data)
+        # write to the target stream
+        self.stream.write(data)
+        # empty queue
+        self.queue.truncate(0)
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+
+def get_integer(text_to_display='', min_value=None,
+        max_value=None, nothing_as_None=False):
+    try:
+        val = str(raw_input(text_to_display))
+        if (val == '') and nothing_as_None:
+            return None
+        val = int(val)
+        if min_value and val<min_value:
+            raise NameError('low')
+        if max_value and val>max_value:
+            raise NameError('high')
+        return val
+    except ValueError:
+        print('You typped wrong value. Please do it again correctly.')
+        return get_integer(text_to_display=text_to_display,
+                min_value=min_value, max_value=max_value,
+                nothing_as_None=nothing_as_None)
+    except NameError:
+        if min_value and max_value:
+            print('You should type value between '+str(min_value)+' and '+
+                    str(max_value)+' Please do it again correctly.')
+        elif min_value:
+            print('You should type value greater or equal than '+str(min_value)+
+                    '. Please do it again correctly.')
+        elif max_value:
+            print('You should type value less or equal than '+str(max_value)+
+                    '. Please do it again correctly.')
+        else:
+            print('You typped wrong value. Please do it again correctly.')
+
+        return get_integer(text_to_display=text_to_display,
+                min_value=min_value, max_value=max_value,
+                nothing_as_None=nothing_as_None)
 
 
 class UserInterface:
@@ -15,6 +113,8 @@ class UserInterface:
 
         parser.add_argument('-i', '--input-name', action='store', nargs=1,
                 help='path to file to check')
+        parser.add_argument('-s', '--save-changes', action='store_true',
+                help='save changes in input files')
         parser.add_argument('-k', '--ktm-code-log', action='store', nargs=1,
                 help='path to file with ktm codes')
         parser.add_argument('-d', '--disp-code-to-check', action='store_true',
@@ -35,7 +135,11 @@ class UserInterface:
             self.cont.group()
 
             self.cont.find_diff_group()
-            self.cont.print_diff()
+            if args.save_changes:
+                self.cont.fix_all_differences()
+                self.cont.csv_write(filename=args.input_name[0])
+            else:
+                self.cont.print_diff()
 
             if args.ktm_code_log:
                 self.cont.print_to_check(args.ktm_code_log[0])
@@ -140,6 +244,7 @@ class Container:
         #ogolna klasa dzialjaca bez konkretnych nazw
         self.cont_conf = DataConfiguration()
         self.main_list = list()
+        self.main_list_to_write = list()
         self.group_list = list()
         self.diff_group = list()
         self.tmp_sort_key = None
@@ -166,8 +271,63 @@ class Container:
         else:
             print('Not recognised type of csv read')
 
+        self.main_list_to_write = list(self.main_list)
+
         if remove:
-            self.files_to_remove.append(filename)
+            self.files_to_remove.append(filenam)
+
+    def csv_write(self, filename, output_data_format='format_1',
+            remove=False):
+        """Read data from CSV file
+
+        input_data_format:
+            format_1
+            format_2
+        """
+        
+        if len(self.diff_group)>0:
+            shutil.copyfile(filename,filename+'_bac')
+        
+        """
+        values = [u'español', u'西班牙语']
+        f = open('eggs.csv', 'w')
+        writer = UnicodeWriter(f)
+        writer.writerow(values)
+        """
+
+        if output_data_format is 'format_1':
+            print("zapis danych")
+
+            with open(filename, 'wb') as csvfile:
+                spamwriter = UnicodeWriter(csvfile)
+
+                for i in self.main_list_to_write:
+                    spamwriter.writerow(i)
+            '''
+            with open(filename, 'wb') as csvfile:
+                #with open(filename, newline='', encoding='utf-8') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter='\t',
+                                        quoting=csv.QUOTE_NONE)
+                for i in self.main_list_to_write:
+                    spamwriter.writerow(i)
+
+
+
+
+
+            with open(filename, 'wb') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter='\t',
+                                        quoting=csv.QUOTE_NONE,
+                                        escapechar='\\')
+                for i in self.main_list_to_write:
+                    for j in i:
+                        j = j.encode("utf-8")
+                    spamwriter.writerow(i)
+             '''
+        elif input_data_format is 'format_2':
+            pass
+        else:
+            print('Not recognised type of csv read')
 
     def print_data(self):
         for i in self.main_list:
@@ -232,8 +392,10 @@ class Container:
                 print("KTM code: "+str(i[0][self.cont_conf.\
                     c_idx_of('ktm_code')]))
 
-                print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],'Part',i[0][9])
-                print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],'Part',i[1][9])
+                print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],
+                        'Part',i[0][9])
+                print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],
+                        'Part',i[1][9])
 
 
                 print('Diffrence:')
@@ -241,6 +403,75 @@ class Container:
                 print(i[1][i[2]])
         else:
             print("\n\tThere is no diffrences\n")
+
+    def fix_all_differences(self):
+        for i in range(0,len(self.diff_group)):
+            self.choose_one_from_diff(diff_group_idx=i)
+
+    def choose_one_from_diff(self,diff_group_idx,idx=None,diff_type=None,
+            choose=None,user_name=None):
+        i=self.diff_group[diff_group_idx]
+        if idx is None:
+            idx=i[2]
+        if diff_type is None:
+            diff_type=i[4]
+        if choose is None:
+            print('Choose t name of '+self.cont_conf.name_c_idx(idx)+
+                    ' for '+i[0][self.cont_conf.sort_key_idx])
+            print('1: '+i[0][idx])
+            print('2: '+i[1][idx])
+            print('3: Enter different name')
+            print('\nMore data:')
+            print(i)
+            print('')
+            print("KTM code: "+str(i[0][self.cont_conf.\
+                c_idx_of('ktm_code')]))
+
+            print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],
+                    'Part',i[0][9])
+            print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],
+                    'Part',i[1][9])
+            print('\n')
+
+            choose = get_integer(text_to_display='Enter number to choose '+
+                'option(Enter to skip): ',min_value=0,max_value=3,
+                nothing_as_None=True)
+        if choose == 1:
+            self.make_data_uniform(
+                    main_param_name=i[0][self.cont_conf.sort_key_idx],
+                    idx=idx,name_to_change=i[0][idx])
+            
+            print('zmieniono na opcje 1')
+
+        elif choose == 2:
+            self.make_data_uniform(
+                    main_param_name=i[0][self.cont_conf.sort_key_idx],
+                    idx=idx,name_to_change=i[1][idx])
+            
+            print('zmieniono na opcje 2')
+
+        elif choose == 3:
+            
+            print('zmieniono na opcje 3')
+
+            if user_name:
+                self.make_data_uniform(
+                        main_param_name=i[0][self.cont_conf.sort_key_idx],
+                        idx=idx,name_to_change=user_name)
+            else:
+                user_name =  raw_input('Enter your name:\n')
+                user_name = user_name.decode(sys.stdin.encoding)
+                self.make_data_uniform(
+                        main_param_name=i[0][self.cont_conf.sort_key_idx],
+                        idx=idx,name_to_change=user_name)
+        elif choose == None:
+            pass
+
+
+    def make_data_uniform(self, main_param_name, idx, name_to_change):
+        for i in self.main_list_to_write:
+            if i[self.cont_conf.sort_key_idx] == main_param_name:
+                i[idx] = name_to_change
 
     def is_on_list(self, elem, list, idx):
         try:
