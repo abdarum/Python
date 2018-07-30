@@ -6,9 +6,7 @@ import os
 import sys
 import argparse
 import shutil
-
-
-
+import codecs
 
 class UTF8Recoder:
     """
@@ -249,25 +247,33 @@ class Container:
         self.diff_group = list()
         self.tmp_sort_key = None
 
-    def csv_read(self, filename, input_data_format='format_1',
+        self.dialect_format2 = csv.excel_tab
+        self.dialect_format2.quoting = csv.QUOTE_NONE
+        self.dialect_format2.escapechar = '\\'
+
+    def csv_read(self, filename, input_data_format='format_2',
             remove=False):
         """Read data from CSV file
 
         input_data_format:
-            format_1
-            format_2
+            format_1 - ansii
+            format_2 - utf-8
         """
         if input_data_format is 'format_1':
             #with open(filename, newline='', encoding='utf-8') as csvfile:
-            with open(filename, 'rb') as csvfile:
+            with open(filename, mode='rb') as csvfile:
                 reader = csv.reader(csvfile, delimiter='\t')
                 for row in reader:
                     #print('\t'.join(row))
                     self.main_list.append(row)
 
-
         elif input_data_format is 'format_2':
-            pass
+            with open(filename,'rb') as csvfile:
+                reader = UnicodeReader(csvfile,dialect=self.dialect_format2)
+                for row in reader:
+                    #print('\t'.join(row))
+                    self.main_list.append(row)
+                
         else:
             print('Not recognised type of csv read')
 
@@ -276,34 +282,19 @@ class Container:
         if remove:
             self.files_to_remove.append(filenam)
 
-    def csv_write(self, filename, output_data_format='format_1',
+    def csv_write(self, filename, output_data_format='format_2',
             remove=False):
         """Read data from CSV file
 
         input_data_format:
-            format_1
-            format_2
+            format_1 - ansii
+            format_2 - utf-8
         """
         
         if len(self.diff_group)>0:
             shutil.copyfile(filename,filename+'_bac')
-        
-        """
-        values = [u'español', u'西班牙语']
-        f = open('eggs.csv', 'w')
-        writer = UnicodeWriter(f)
-        writer.writerow(values)
-        """
 
         if output_data_format is 'format_1':
-            print("zapis danych")
-
-            with open(filename, 'wb') as csvfile:
-                spamwriter = UnicodeWriter(csvfile)
-
-                for i in self.main_list_to_write:
-                    spamwriter.writerow(i)
-            '''
             with open(filename, 'wb') as csvfile:
                 #with open(filename, newline='', encoding='utf-8') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter='\t',
@@ -312,22 +303,22 @@ class Container:
                     spamwriter.writerow(i)
 
 
-
-
-
+        elif output_data_format is 'format_2':
             with open(filename, 'wb') as csvfile:
-                spamwriter = csv.writer(csvfile, delimiter='\t',
-                                        quoting=csv.QUOTE_NONE,
-                                        escapechar='\\')
+                spamwriter = UnicodeWriter(csvfile, 
+                        dialect=self.dialect_format2)
+
                 for i in self.main_list_to_write:
-                    for j in i:
-                        j = j.encode("utf-8")
-                    spamwriter.writerow(i)
-             '''
-        elif input_data_format is 'format_2':
-            pass
-        else:
-            print('Not recognised type of csv read')
+                   spamwriter.writerow(i)
+
+            with open(filename, 'r') as infile, \
+                open(filename+'_tmp', 'w') as outfile:
+                    data = infile.read()
+                    data = data.replace('\\', '')
+                    outfile.write(data)
+            shutil.move(filename+'_tmp',filename)
+
+
 
     def print_data(self):
         for i in self.main_list:
