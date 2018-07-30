@@ -355,6 +355,7 @@ class Container:
                     self.group_list[-1].append(self.main_list[0])
 
     def find_diff_group(self):
+        self.diff_group = list()
         for i in self.group_list:
             if len(i)>1:
                 for idx in range(0,self.cont_conf.max_c_idx()):
@@ -367,96 +368,87 @@ class Container:
                                 #modif if you need
                                 self.diff_group.append(
                                     [
-                                    i[grp_elem_idx-1],
-                                    i[grp_elem_idx],
+                                    [i[grp_elem_idx-1],
+                                    i[grp_elem_idx]],
                                     idx,
                                     self.cont_conf.name_c_idx(idx),
                                     self.cont_conf.descr_c_idx(idx)])
 
+                                    
+
     def print_diff(self):
         if len(self.diff_group):
             print("\n\n\n\tDiffrences\n\n\n")
-            for i in self.diff_group:
-                print('\n\n')
-                print(i)
-                print('')
-                print("KTM code: "+str(i[0][self.cont_conf.\
-                    c_idx_of('ktm_code')]))
-
-                print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],
-                        'Part',i[0][9])
-                print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],
-                        'Part',i[1][9])
-
-
-                print('Diffrence:')
-                print(i[0][i[2]])
-                print(i[1][i[2]])
+            for i in range(len(self.diff_group)):
+                self.print_diff_one_code(idx=i)
         else:
             print("\n\tThere is no diffrences\n")
+
+
+    def print_diff_one_code(self,idx):
+        i = self.diff_group[idx]
+        print('\n\n')
+        print(i)
+        print('')
+        print("KTM code: "+str(i[0][0][self.cont_conf.\
+            c_idx_of('ktm_code')]))
+
+        print('Page ',i[0][0][1],' Idx ',i[0][0][0],
+                'Schem idx',i[0][0][3], 'Part',i[0][0][9])
+        print('Page ',i[0][1][1],' Idx ',i[0][1][0],
+                'Schem idx',i[0][1][3], 'Part',i[0][1][9])
+
+        print('Diffrence:')
+        print(i[0][0][i[1]])
+        print(i[0][1][i[1]])
 
     def fix_all_differences(self):
         for i in range(0,len(self.diff_group)):
             self.choose_one_from_diff(diff_group_idx=i)
 
     def choose_one_from_diff(self,diff_group_idx,idx=None,diff_type=None,
-            choose=None,user_name=None):
+            choose=None,user_name=None,update_diff=False):
         i=self.diff_group[diff_group_idx]
         if idx is None:
-            idx=i[2]
+            idx=i[1]
         if diff_type is None:
-            diff_type=i[4]
+            diff_type=i[3]
         if choose is None:
             print('Choose t name of '+self.cont_conf.name_c_idx(idx)+
-                    ' for '+i[0][self.cont_conf.sort_key_idx])
-            print('1: '+i[0][idx])
-            print('2: '+i[1][idx])
+                    ' for '+i[0][0][self.cont_conf.sort_key_idx])
+            print('1: '+i[0][0][idx])
+            print('2: '+i[0][1][idx])
             print('3: Enter different name')
             print('\nMore data:')
-            print(i)
-            print('')
-            print("KTM code: "+str(i[0][self.cont_conf.\
-                c_idx_of('ktm_code')]))
-
-            print('Page ',i[0][1],' Idx ',i[0][0],'Schem idx',i[0][3],
-                    'Part',i[0][9])
-            print('Page ',i[1][1],' Idx ',i[1][0],'Schem idx',i[1][3],
-                    'Part',i[1][9])
-            print('\n')
+            self.print_diff_one_code(diff_group_idx)
 
             choose = get_integer(text_to_display='Enter number to choose '+
                 'option(Enter to skip): ',min_value=0,max_value=3,
                 nothing_as_None=True)
         if choose == 1:
             self.make_data_uniform(
-                    main_param_name=i[0][self.cont_conf.sort_key_idx],
-                    idx=idx,name_to_change=i[0][idx])
-            
-            print('zmieniono na opcje 1')
-
+                    main_param_name=i[0][0][self.cont_conf.sort_key_idx],
+                    idx=idx,name_to_change=i[0][0][idx])
         elif choose == 2:
             self.make_data_uniform(
-                    main_param_name=i[0][self.cont_conf.sort_key_idx],
-                    idx=idx,name_to_change=i[1][idx])
-            
-            print('zmieniono na opcje 2')
-
+                    main_param_name=i[0][0][self.cont_conf.sort_key_idx],
+                    idx=idx,name_to_change=i[0][1][idx])
         elif choose == 3:
-            
-            print('zmieniono na opcje 3')
-
             if user_name:
                 self.make_data_uniform(
-                        main_param_name=i[0][self.cont_conf.sort_key_idx],
+                        main_param_name=i[0][0][self.cont_conf.sort_key_idx],
                         idx=idx,name_to_change=user_name)
             else:
                 user_name =  raw_input('Enter your name:\n')
                 user_name = user_name.decode(sys.stdin.encoding)
                 self.make_data_uniform(
-                        main_param_name=i[0][self.cont_conf.sort_key_idx],
+                        main_param_name=i[0][0][self.cont_conf.sort_key_idx],
                         idx=idx,name_to_change=user_name)
         elif choose == None:
             pass
+        
+        if update_diff:
+            self.find_diff_group()
 
 
     def make_data_uniform(self, main_param_name, idx, name_to_change):
@@ -464,9 +456,9 @@ class Container:
             if i[self.cont_conf.sort_key_idx] == main_param_name:
                 i[idx] = name_to_change
 
-    def is_on_list(self, elem, list, idx):
+    def is_on_list(self, elem, list_to_check, idx):
         try:
-            for i in list:
+            for i in list_to_check:
                 if i[idx] == elem:
                     return True
             return False
