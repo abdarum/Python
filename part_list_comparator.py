@@ -431,26 +431,22 @@ class Container:
         if diff_type is None:
             diff_type=i[3]
         if choose is None:
-            print('Choose t name of '+self.cont_conf.name_c_idx(idx)+
-                    ' for '+i[0][0][self.cont_conf.sort_key_idx])
-            print('1: '+i[0][0][idx])
-            print('2: '+i[0][1][idx])
-            print('3: Enter different name')
-            print('\nMore data:')
+            print('\n\nMore data for: '+
+                    str(i[0][0][self.cont_conf.sort_key_idx]))
             self.print_diff_one_code(diff_group_idx)
 
+
+            print('\nChoose t name of '+self.cont_conf.name_c_idx(idx)+
+                    ' for '+i[0][0][self.cont_conf.sort_key_idx])
+            print('\n0: Enter different name\n')
+
+            for i_idx in range(0,len(i[0])):
+                print(str(i_idx+1)+': '+i[0][i_idx][idx].encode('utf-8'))
+          
             choose = get_integer(text_to_display='Enter number to choose '+
-                'option(Enter to skip): ',min_value=0,max_value=3,
+                'option(Enter to skip): ',min_value=0,max_value=len(i[0]),
                 nothing_as_None=True)
-        if choose == 1:
-            self.make_data_uniform(
-                    main_param_name=i[0][0][self.cont_conf.sort_key_idx],
-                    idx=idx,name_to_change=i[0][0][idx])
-        elif choose == 2:
-            self.make_data_uniform(
-                    main_param_name=i[0][0][self.cont_conf.sort_key_idx],
-                    idx=idx,name_to_change=i[0][1][idx])
-        elif choose == 3:
+        if choose == 0:
             if user_name:
                 self.make_data_uniform(
                         main_param_name=i[0][0][self.cont_conf.sort_key_idx],
@@ -461,6 +457,10 @@ class Container:
                 self.make_data_uniform(
                         main_param_name=i[0][0][self.cont_conf.sort_key_idx],
                         idx=idx,name_to_change=user_name)
+        elif choose>0 and choose<=len(i[0]):
+            self.make_data_uniform(
+                    main_param_name=i[0][0][self.cont_conf.sort_key_idx],
+                    idx=idx,name_to_change=i[0][choose-1][idx])
         elif choose == None:
             pass
         
