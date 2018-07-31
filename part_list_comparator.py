@@ -6,7 +6,13 @@ import os
 import sys
 import argparse
 import shutil
-import codecs
+import Tkinter
+import tkFileDialog
+import ttk
+
+#constant
+TITLE = "Part list comparator"
+
 
 class UTF8Recoder:
     """
@@ -106,6 +112,7 @@ def get_integer(text_to_display='', min_value=None,
 class UserInterface:
     def __init__(self):
         self.cont = Container()
+        self.default_dir = '~/Desktop'
         parser = argparse.ArgumentParser(description='Find diffrences '+
                  'in part list')
 
@@ -152,6 +159,144 @@ class UserInterface:
         """
         if len(sys.argv)==1:
             parser.print_help()
+            root = Tkinter.Tk()
+            my_gui = self.GUI(root)
+            root.mainloop()
+
+
+    def GUI(self, master):
+        self.idx_of_data = 0 
+        self.choose = None
+        self.master = master
+        self.master.title(TITLE)
+        self.master.filename = tkFileDialog.askopenfilename(
+                initialdir = self.default_dir,
+                title = "Select file to check",
+                filetypes = (("csv files","*.csv"),("all files","*.*")))
+        print(self.master.filename)
+
+        self.cont.csv_read(filename=self.master.filename)
+
+        self.cont.sort_by()
+        self.cont.group()
+
+        self.cont.find_diff_group()
+
+
+        self.show_differences()
+
+
+
+    def set_window(self, ktm_code=None,type_of_diff=None):    
+        self.master.grid_rowconfigure(0,weight=1)
+        self.master.grid_columnconfigure(0,weight=1)
+        self.master.config(background="lavender")
+
+        # Define the different GUI widgets
+        self.ktm_code_label = Tkinter.Label(self.master, text = "Ktm code:")
+        self.ktm_code_label.grid(row = 0, column = 0, sticky = Tkinter.E)
+        self.ktm_code_data = Tkinter.Label(self.master, text = ktm_code)
+        self.ktm_code_data.grid(row = 0, column = 1, sticky = Tkinter.W)
+
+        self.type_of_diff_label = Tkinter.Label(self.master, 
+                text = "Type of diff:")
+        self.type_of_diff_label.grid(row = 2, column = 0, sticky = Tkinter.E)
+        self.type_of_diff_data = Tkinter.Label(self.master, 
+                text = type_of_diff)
+        self.type_of_diff_data.grid(row = 2, column = 1, sticky = Tkinter.W)
+
+
+        self.modified_label = Tkinter.Label(self.master, text = "Your choose:")
+        self.modified_entry = Tkinter.Entry(self.master)
+        self.modified_label.grid(row = 1, column = 0, sticky = Tkinter.E)
+        self.modified_entry.grid(row = 1, column = 1)
+        self.submit_button = Tkinter.Button(self.master, text = "Insert", 
+                command = self.insert_data)
+        self.submit_button.grid(row = 1, column = 3, sticky = Tkinter.W)
+
+        # Set the treeview
+        self.tree = ttk.Treeview( self.master, columns=('','','','','',''))
+        self.tree.heading('#0', text='Choose idx')
+        self.tree.heading('#1', text='Diffrence')
+        self.tree.heading('#2', text=self.cont.cont_conf.conf_list[
+            self.cont.cont_conf.c_idx_of("schem_idx")].descr)
+        self.tree.heading('#3', text=self.cont.cont_conf.conf_list[
+            self.cont.cont_conf.c_idx_of("idx")].descr)
+        self.tree.heading('#4', text=self.cont.cont_conf.conf_list[
+            self.cont.cont_conf.c_idx_of("page")].descr)
+        self.tree.heading('#5', text=self.cont.cont_conf.conf_list[
+            self.cont.cont_conf.c_idx_of("module_name")].descr)
+        self.tree.heading('#6', text=self.cont.cont_conf.conf_list[
+            self.cont.cont_conf.c_idx_of("machine_name")].descr)
+
+        self.tree.column('#0', stretch=Tkinter.YES)
+        self.tree.column('#1', stretch=Tkinter.YES)
+        self.tree.column('#2', stretch=Tkinter.YES)
+        self.tree.column('#3', stretch=Tkinter.YES)
+        self.tree.column('#4', stretch=Tkinter.YES)
+        self.tree.column('#5', stretch=Tkinter.YES)
+        self.tree.column('#6', stretch=Tkinter.YES)
+        self.tree.grid(row=7, columnspan=7, sticky='nsew')
+        self.treeview = self.tree
+        # Initialize the counter
+ 
+
+
+    def show_differences(self):
+        if len(self.cont.diff_group) > self.idx_of_data+1:
+            diff_item = self.cont.diff_group[self.idx_of_data]
+            """
+            print('\n\n')
+            print(diff_item)
+            print('\n\n')
+            print(self.cont.cont_conf.c_idx_of("ktm_code"))
+            print('\n\n')
+            print(diff_item[0][1])
+            print('\n\n')
+            """
+            self.set_window(
+                    diff_item[0][0][self.cont.cont_conf.c_idx_of("ktm_code")],
+                    diff_item[0][0][3])
+            for i in range(0,len(diff_item)):
+                self.treeview.insert('', 'end', text=str(i+1), values=(
+                    diff_item[0][i][diff_item[1]],
+                    diff_item[0][i][self.cont.cont_conf.c_idx_of("schem_idx")],
+                    diff_item[0][i][self.cont.cont_conf.c_idx_of("idx")],
+                    diff_item[0][i][self.cont.cont_conf.c_idx_of("page")],
+                    diff_item[0][i]\
+                            [self.cont.cont_conf.c_idx_of("module_name")],
+                    diff_item[0][i]\
+                            [self.cont.cont_conf.c_idx_of("machine_name")]))
+
+
+    def insert_data(self):
+        """
+        Insertion method.
+        """
+        self.cont.print_diff_one_code(self.idx_of_data)
+        self.choose = self.modified_entry.get()
+        try:
+            self.choose = int(self.choose)
+        except:
+            pass
+
+        print(self.choose)
+
+        if self.choose>0:
+            #self.cont.choose_one_from_diff(diff_group_idx=self.idx_of_data,
+            #        choose=self.choose,update_diff=True)
+            pass
+        else:
+            self.idx_of_data +=1
+        self.master.update()
+        self.show_differences()
+
+
+
+        
+
+
+
 
 class DataIndex:
     def __init__(self, name, f_col=None,
@@ -197,7 +342,7 @@ class DataConfiguration:
         self.conf_list.append(DataIndex(name="module_name",
             f_col=9, c_idx=9, descr="Funkcja"))
         self.conf_list.append(DataIndex(name="machine_name", f_col=10,
-            c_idx=10))
+            c_idx=10, descr="Maszyna"))
 
         self.sort_key_idx = self.c_idx_of('ktm_code')
 
@@ -273,7 +418,7 @@ class Container:
                 for row in reader:
                     #print('\t'.join(row))
                     self.main_list.append(row)
-                
+
         else:
             print('Not recognised type of csv read')
 
@@ -290,7 +435,7 @@ class Container:
             format_1 - ansii
             format_2 - utf-8
         """
-        
+
         if len(self.diff_group)>0:
             shutil.copyfile(filename,filename+'_bac')
 
@@ -305,7 +450,7 @@ class Container:
 
         elif output_data_format is 'format_2':
             with open(filename, 'wb') as csvfile:
-                spamwriter = UnicodeWriter(csvfile, 
+                spamwriter = UnicodeWriter(csvfile,
                         dialect=self.dialect_format2)
 
                 for i in self.main_list_to_write:
@@ -373,12 +518,10 @@ class Container:
                                     if self.is_on_list(i[grp_elem_idx][idx],
                                             tmp_diff_list[0],idx) is False:
                                         tmp_diff_list[0].append(i[grp_elem_idx])
-                                    print(i[grp_elem_idx])
-                                    
-                        print(tmp_diff_list[0])
+
                         if len(tmp_diff_list[0]):
                             self.diff_group.append(tmp_diff_list)
- 
+
                         """
                         if i[grp_elem_idx-1][idx]\
                                 != i[grp_elem_idx][idx]:
@@ -392,7 +535,7 @@ class Container:
                                 self.cont_conf.descr_c_idx(idx)])
                         """
 
-                                    
+
 
     def print_diff(self):
         if len(self.diff_group):
@@ -420,8 +563,10 @@ class Container:
             print(j[i[1]])
 
     def fix_all_differences(self):
-        for i in range(0,len(self.diff_group)):
+        if len(self.diff_group):
             self.choose_one_from_diff(diff_group_idx=i)
+            self.fix_all_differences()
+
 
     def choose_one_from_diff(self,diff_group_idx,idx=None,diff_type=None,
             choose=None,user_name=None,update_diff=False):
@@ -442,7 +587,7 @@ class Container:
 
             for i_idx in range(0,len(i[0])):
                 print(str(i_idx+1)+': '+i[0][i_idx][idx].encode('utf-8'))
-          
+
             choose = get_integer(text_to_display='Enter number to choose '+
                 'option(Enter to skip): ',min_value=0,max_value=len(i[0]),
                 nothing_as_None=True)
@@ -463,7 +608,7 @@ class Container:
                     idx=idx,name_to_change=i[0][choose-1][idx])
         elif choose == None:
             pass
-        
+
         if update_diff:
             self.find_diff_group()
 
