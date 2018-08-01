@@ -9,6 +9,7 @@ import shutil
 import Tkinter
 import tkFileDialog
 import ttk
+import tkMessageBox
 
 #constant
 TITLE = "Part list comparator"
@@ -165,57 +166,68 @@ class UserInterface:
 
 
     def GUI(self, master):
-        self.idx_of_data = 0 
+        self.idx_of_data = 0
         self.choose = None
+        self.box_insert = False
+        self.stop_program_var= False
         self.master = master
         self.master.title(TITLE)
-        self.master.filename = tkFileDialog.askopenfilename(
+        self.main_filename = tkFileDialog.askopenfilename(
                 initialdir = self.default_dir,
                 title = "Select file to check",
                 filetypes = (("csv files","*.csv"),("all files","*.*")))
-        print(self.master.filename)
+        print(self.main_filename)
 
-        self.cont.csv_read(filename=self.master.filename)
+        self.cont.csv_read(filename=self.main_filename)
 
         self.cont.sort_by()
         self.cont.group()
 
         self.cont.find_diff_group()
 
-
+        self.set_window()
         self.show_differences()
 
 
 
-    def set_window(self, ktm_code=None,type_of_diff=None):    
+    def set_window(self, ktm_code=None,type_of_diff=None):
+        self.master.bind("<KeyRelease>", self.on_return_release)
         self.master.grid_rowconfigure(0,weight=1)
         self.master.grid_columnconfigure(0,weight=1)
         self.master.config(background="lavender")
 
         # Define the different GUI widgets
         self.ktm_code_label = Tkinter.Label(self.master, text = "Ktm code:")
-        self.ktm_code_label.grid(row = 0, column = 0, sticky = Tkinter.E)
+        self.ktm_code_label.grid(row = 0, column = 1, sticky = Tkinter.E)
         self.ktm_code_data = Tkinter.Label(self.master, text = ktm_code)
-        self.ktm_code_data.grid(row = 0, column = 1, sticky = Tkinter.W)
+        self.ktm_code_data.grid(row = 0, column = 2, sticky = Tkinter.W)
 
-        self.type_of_diff_label = Tkinter.Label(self.master, 
+        self.type_of_diff_label = Tkinter.Label(self.master,
                 text = "Type of diff:")
-        self.type_of_diff_label.grid(row = 2, column = 0, sticky = Tkinter.E)
-        self.type_of_diff_data = Tkinter.Label(self.master, 
+        self.type_of_diff_label.grid(row = 2, column = 1, sticky = Tkinter.E)
+        self.type_of_diff_data = Tkinter.Label(self.master,
                 text = type_of_diff)
-        self.type_of_diff_data.grid(row = 2, column = 1, sticky = Tkinter.W)
+        self.type_of_diff_data.grid(row = 2, column = 2, sticky = Tkinter.W)
 
 
         self.modified_label = Tkinter.Label(self.master, text = "Your choose:")
-        self.modified_entry = Tkinter.Entry(self.master)
-        self.modified_label.grid(row = 1, column = 0, sticky = Tkinter.E)
-        self.modified_entry.grid(row = 1, column = 1)
-        self.submit_button = Tkinter.Button(self.master, text = "Insert", 
+        self.modified_entry = Tkinter.Entry(self.master, width=10)
+        self.modified_label.grid(row = 1, column = 1, sticky = Tkinter.E)
+        self.modified_entry.grid(row = 1, column = 2)
+        self.submit_button = Tkinter.Button(self.master, text = "Go",
                 command = self.insert_data)
-        self.submit_button.grid(row = 1, column = 3, sticky = Tkinter.W)
+        self.submit_button.grid(row = 1, column = 4, sticky = Tkinter.W)
+        self.skip_button = Tkinter.Button(self.master, text = "Skip",
+                command = self.skip_data)
+        self.skip_button.grid(row = 2, column = 4, sticky = Tkinter.W)
+        self.help_button = Tkinter.Button(self.master, text = "Help",
+                command = self.show_help)
+        self.help_button.grid(row = 0, column = 0, sticky = Tkinter.W)
+
+
 
         # Set the treeview
-        self.tree = ttk.Treeview( self.master, columns=('','','','','',''))
+        self.tree = ttk.Treeview(self.master, columns=('','','','','',''))
         self.tree.heading('#0', text='Choose idx')
         self.tree.heading('#1', text='Diffrence')
         self.tree.heading('#2', text=self.cont.cont_conf.conf_list[
@@ -229,21 +241,31 @@ class UserInterface:
         self.tree.heading('#6', text=self.cont.cont_conf.conf_list[
             self.cont.cont_conf.c_idx_of("machine_name")].descr)
 
-        self.tree.column('#0', stretch=Tkinter.YES)
-        self.tree.column('#1', stretch=Tkinter.YES)
-        self.tree.column('#2', stretch=Tkinter.YES)
-        self.tree.column('#3', stretch=Tkinter.YES)
-        self.tree.column('#4', stretch=Tkinter.YES)
-        self.tree.column('#5', stretch=Tkinter.YES)
-        self.tree.column('#6', stretch=Tkinter.YES)
+        self.tree.column('#0', width=60, stretch=Tkinter.YES)
+        self.tree.column('#1', width=400, stretch=Tkinter.YES)
+        self.tree.column('#2', width=130, stretch=Tkinter.YES)
+        self.tree.column('#3', width=60, stretch=Tkinter.YES)
+        self.tree.column('#4', width=60, stretch=Tkinter.YES)
+        self.tree.column('#5', width=200, stretch=Tkinter.YES)
+        self.tree.column('#6', width=200, stretch=Tkinter.YES)
         self.tree.grid(row=7, columnspan=7, sticky='nsew')
         self.treeview = self.tree
         # Initialize the counter
- 
 
+    def clear_tree(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+            self.ktm_code_data.config(text='')
+            self.type_of_diff_data.config(text='')
+
+    def stop_program(self):
+        self.stop_program_var = True
+        while(True):
+            self.do_you_want_to_save_index_to_check()
+            self.do_you_want_to_save_main_file()
 
     def show_differences(self):
-        if len(self.cont.diff_group) > self.idx_of_data+1:
+        if len(self.cont.diff_group) > self.idx_of_data:
             diff_item = self.cont.diff_group[self.idx_of_data]
             """
             print('\n\n')
@@ -254,9 +276,9 @@ class UserInterface:
             print(diff_item[0][1])
             print('\n\n')
             """
-            self.set_window(
-                    diff_item[0][0][self.cont.cont_conf.c_idx_of("ktm_code")],
-                    diff_item[0][0][3])
+            self.ktm_code_data.config(text=
+                    diff_item[0][0][self.cont.cont_conf.c_idx_of("ktm_code")])
+            self.type_of_diff_data.config(text=diff_item[3])
             for i in range(0,len(diff_item)):
                 self.treeview.insert('', 'end', text=str(i+1), values=(
                     diff_item[0][i][diff_item[1]],
@@ -268,33 +290,131 @@ class UserInterface:
                     diff_item[0][i]\
                             [self.cont.cont_conf.c_idx_of("machine_name")]))
 
+    def on_return_release(self, event):
+        #print(event.keysym)
+        if not self.stop_program_var:
+            if event.keysym=='Return' or event.keysym=='KP_Enter':
+                if self.box_insert:
+                    self.box_insert_data()
+                else:
+                    self.insert_data()
+
+            elif  event.keysym=='Escape':
+                if self.box_insert:
+                    self.box_insert_window.destroy()
+                    self.box_insert = False
+                else:
+                    self.skip_data()
+
+
+    def skip_data(self):
+        self.idx_of_data += 1
+        self.insert_data()
 
     def insert_data(self):
-        """
-        Insertion method.
-        """
-        self.cont.print_diff_one_code(self.idx_of_data)
-        self.choose = self.modified_entry.get()
+        self.clear_tree()
+        if self.idx_of_data < len(self.cont.diff_group):
+
+            self.choose = self.modified_entry.get()
+            self.modified_entry.delete(0, 'end')
+            try:
+                self.choose = int(self.choose)
+            except:
+                self.choose = -1
+
+            if self.choose>0:
+                self.cont.print_diff_one_code(self.idx_of_data)
+
+                self.cont.choose_one_from_diff(diff_group_idx=self.idx_of_data,
+                        choose=self.choose,update_diff=True)
+
+            elif self.choose == 0:
+                self.box_insert_data_window()
+
+
+            self.show_differences()
+            if self.idx_of_data==len(self.cont.diff_group) and self.choose>-1:
+                self.stop_program()
+                print('fixed whole file')
+
+        else:
+            print('fixed whole file')
+            self.stop_program()
+
+
+    def box_insert_data_window(self):
+        self.box_insert = True
+        self.box_insert_window = Tkinter.Tk()
+        self.box_insert_window.bind("<KeyRelease>", self.on_return_release)
+        self.box_insert_window.title('Choose name for code')
+        self.modified_insert_entry = Tkinter.Entry(self.box_insert_window,
+                width=60)
+        self.modified_insert_label = Tkinter.Label(self.box_insert_window,
+                text = "Your choose:")
+        self.modified_insert_label.grid(row = 0, column = 0, sticky = Tkinter.E)
+        self.modified_insert_entry.grid(row = 1, column = 0)
+        self.submit_insert_button = Tkinter.Button(self.box_insert_window,
+                text = "Insert", command = self.box_insert_data)
+        self.submit_insert_button.grid(row = 1, column = 1, sticky = Tkinter.W)
+
+    def box_insert_data(self):
+        self.choose = -1
+        user_data = self.modified_insert_entry.get()
+        user_data = user_data.encode(sys.stdin.encoding)
+
+        self.cont.choose_one_from_diff(diff_group_idx=self.idx_of_data,
+                choose=0,user_name=user_data,update_diff=True)
+        self.modified_insert_entry.delete(0, 'end')
+
+        self.show_differences()
+        self.box_insert_window.destroy()
+        self.choose = 0
+        self.insert_data()
+        self.box_insert = False
+
+
+    def do_you_want_to_save_main_file(self):
+        if tkMessageBox.askyesno('Main CSV file',
+"""
+Do you want to save your changes
+in oryginal csv file?
+"""):
+            if tkMessageBox.askyesno('Save changes?', "Are you sure?"):
+                self.cont.csv_write(filename=self.main_filename)
+                quit()
+
+        else:
+            if tkMessageBox.askyesno('Do not save changes?', "Are you sure?"):
+                self.cont.print_by_group()
+                quit()
+            else:
+                self.do_you_want_to_save_main_file()
+                pass
+
+    def do_you_want_to_save_index_to_check(self):
         try:
-            self.choose = int(self.choose)
+            if tkMessageBox.askyesno('Index CSV file',
+    """
+    Do you want to save file
+    with codes to check?
+    """):
+                filename = tkFileDialog.asksaveasfilename(initialdir = "~/Desktop",
+                        title = "Select file to save index to check",
+                        filetypes = (("csv files","*.csv"), ("all files","*.*")))
+                print(filename)
+                self.cont.print_to_check(filename)
+            else:
+                pass
         except:
             pass
 
-        print(self.choose)
-
-        if self.choose>0:
-            #self.cont.choose_one_from_diff(diff_group_idx=self.idx_of_data,
-            #        choose=self.choose,update_diff=True)
-            pass
-        else:
-            self.idx_of_data +=1
-        self.master.update()
-        self.show_differences()
-
-
-
-        
-
+    def show_help(self):
+        tkMessageBox.showinfo('Help',
+"""
+Program was writed by
+Kornel Stefańczyk in 1.08.2018
+email: kornelstefanczyk@wp.pl
+""", parent=self.master)
 
 
 
