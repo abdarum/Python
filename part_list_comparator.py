@@ -174,12 +174,12 @@ class UserInterface:
         self.choose = None
         self.box_insert = False
         self.stop_program_var= False
-        self.master = master
-        self.master.title(TITLE)
         self.main_filename = tkFileDialog.askopenfilename(
                 initialdir = self.default_dir,
                 title = "Select file to check",
                 filetypes = (("csv files","*.csv"),("all files","*.*")))
+        self.master = master
+        self.master.title(TITLE+'\t\t\tfile:\t'+self.main_filename)
         print(self.main_filename)
         self.master.geometry('1250x500')
 
