@@ -11,6 +11,10 @@ import tkFileDialog
 import ttk
 import tkMessageBox
 
+__author__ = 'Kornel Stefańczyk'
+__version__ = '1.0'
+__email__ = 'kornelstefanczyk@wp.pl'
+
 #constant
 TITLE = "Part list comparator"
 
@@ -177,6 +181,7 @@ class UserInterface:
                 title = "Select file to check",
                 filetypes = (("csv files","*.csv"),("all files","*.*")))
         print(self.main_filename)
+        self.master.geometry('1250x500')
 
         self.cont.csv_read(filename=self.main_filename)
 
@@ -192,7 +197,8 @@ class UserInterface:
 
     def set_window(self, ktm_code=None,type_of_diff=None):
         self.master.bind("<KeyRelease>", self.on_return_release)
-        self.master.grid_rowconfigure(0,weight=1)
+        number_cols = 5
+        number_rows = 3
         self.master.grid_columnconfigure(0,weight=1)
         self.master.config(background="lavender")
 
@@ -227,7 +233,8 @@ class UserInterface:
 
 
         # Set the treeview
-        self.tree = ttk.Treeview(self.master, columns=('','','','','',''))
+        self.tree = ttk.Treeview(self.master, columns=('','','','','',''),
+                height=50)
         self.tree.heading('#0', text='Choose idx')
         self.tree.heading('#1', text='Diffrence')
         self.tree.heading('#2', text=self.cont.cont_conf.conf_list[
@@ -241,16 +248,15 @@ class UserInterface:
         self.tree.heading('#6', text=self.cont.cont_conf.conf_list[
             self.cont.cont_conf.c_idx_of("machine_name")].descr)
 
-        self.tree.column('#0', width=60, stretch=Tkinter.YES)
-        self.tree.column('#1', width=400, stretch=Tkinter.YES)
+        self.tree.column('#0', width=85, stretch=Tkinter.YES)
+        self.tree.column('#1', width=500, stretch=Tkinter.YES)
         self.tree.column('#2', width=130, stretch=Tkinter.YES)
-        self.tree.column('#3', width=60, stretch=Tkinter.YES)
-        self.tree.column('#4', width=60, stretch=Tkinter.YES)
+        self.tree.column('#3', width=55, stretch=Tkinter.YES)
+        self.tree.column('#4', width=55, stretch=Tkinter.YES)
         self.tree.column('#5', width=200, stretch=Tkinter.YES)
         self.tree.column('#6', width=200, stretch=Tkinter.YES)
         self.tree.grid(row=7, columnspan=7, sticky='nsew')
         self.treeview = self.tree
-        # Initialize the counter
 
     def clear_tree(self):
         for item in self.tree.get_children():
@@ -267,11 +273,12 @@ class UserInterface:
     def show_differences(self):
         if len(self.cont.diff_group) > self.idx_of_data:
             diff_item = self.cont.diff_group[self.idx_of_data]
+            self.cont.print_diff_one_code(self.idx_of_data)
             """
             print('\n\n')
             print(diff_item)
             print('\n\n')
-            print(self.cont.cont_conf.c_idx_of("ktm_code"))
+            print(self.cont.cont_conf.c_idx_of("ktm_code")
             print('\n\n')
             print(diff_item[0][1])
             print('\n\n')
@@ -279,9 +286,9 @@ class UserInterface:
             self.ktm_code_data.config(text=
                     diff_item[0][0][self.cont.cont_conf.c_idx_of("ktm_code")])
             self.type_of_diff_data.config(text=diff_item[3])
-            for i in range(0,len(diff_item)):
+            for i in range(0,len(diff_item[0])):
                 self.treeview.insert('', 'end', text=str(i+1), values=(
-                    diff_item[0][i][diff_item[1]],
+                   diff_item[0][i][diff_item[1]],
                     diff_item[0][i][self.cont.cont_conf.c_idx_of("schem_idx")],
                     diff_item[0][i][self.cont.cont_conf.c_idx_of("idx")],
                     diff_item[0][i][self.cont.cont_conf.c_idx_of("page")],
@@ -409,12 +416,12 @@ in oryginal csv file?
             pass
 
     def show_help(self):
-        tkMessageBox.showinfo('Help',
-"""
+        text ="""
 Program was writed by
-Kornel Stefańczyk in 1.08.2018
-email: kornelstefanczyk@wp.pl
-""", parent=self.master)
+""" + __author__ + """ in 1.08.2018
+email: """ + __email__ 
+        tkMessageBox.showinfo('Help, ver. '+__version__, text,
+        parent=self.master)
 
 
 
@@ -606,21 +613,21 @@ class Container:
 
     def group(self):
         if len(self.main_list)>1:
+            self.group_list.append([])
+            self.group_list[-1].append(self.main_list[0])
             for i in range(1, len(self.main_list)):
-                if len(self.group_list):
-                    if self.main_list[i-1][self.cont_conf.sort_key_idx] \
-                        == self.main_list[i][self.cont_conf.sort_key_idx]:
-                         self.group_list[-1].append(self.main_list[i])
-                    else:
-                        self.group_list.append([])
+                if self.main_list[i-1][self.cont_conf.sort_key_idx] \
+                    == self.main_list[i][self.cont_conf.sort_key_idx]:
                         self.group_list[-1].append(self.main_list[i])
-
                 else:
                     self.group_list.append([])
-                    self.group_list[-1].append(self.main_list[0])
+                    self.group_list[-1].append(self.main_list[i])
+
+
 
     def find_diff_group(self):
         self.diff_group = list()
+        self.group()
         for i in self.group_list:
             if len(i)>1:
                 for idx in range(0,self.cont_conf.max_c_idx()):
@@ -631,15 +638,12 @@ class Container:
                             self.cont_conf.descr_c_idx(idx)]
                         self.tmp_sort_key = idx
                         i.sort(key=self.sort_tmp_key)
-                        for grp_elem_idx in range(1,len(i)):
-                            for elem_comp_idx in range(grp_elem_idx+1,len(i)):
-                                if i[grp_elem_idx][idx]\
-                                       != i[elem_comp_idx][idx]:
-                                    if self.is_on_list(i[grp_elem_idx][idx],
-                                            tmp_diff_list[0],idx) is False:
-                                        tmp_diff_list[0].append(i[grp_elem_idx])
+                        for grp_elem_idx in range(0,len(i)):
+                            if self.is_on_list(i[grp_elem_idx][idx],
+                                    tmp_diff_list[0],idx) is False:
+                                tmp_diff_list[0].append(i[grp_elem_idx])
 
-                        if len(tmp_diff_list[0]):
+                        if len(tmp_diff_list[0])>1:
                             self.diff_group.append(tmp_diff_list)
 
                         """
