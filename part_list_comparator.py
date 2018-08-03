@@ -977,6 +977,18 @@ class Container:
                             self.main_list_to_write[elem][field][:-1] 
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
+                        replace(u'\u2018','\'') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2019','\'') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201a','\'') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201b','\'') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
                         replace(u'\u201c','"') 
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
