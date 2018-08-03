@@ -139,24 +139,26 @@ class UserInterface:
 
 
         if args.input_name:
-            self.cont.csv_read(filename=args.input_name[0])
+            if self.cont.csv_read(filename=args.input_name[0]):
 
-            self.cont.sort_by()
-            self.cont.group()
+                self.cont.sort_by()
+                self.cont.group()
 
-            self.cont.find_diff_group()
-            if args.save_changes:
-                self.cont.fix_all_differences()
-                self.cont.csv_write(filename=args.input_name[0],
-                        fix_quotes=True)
+                self.cont.find_diff_group()
+                if args.save_changes:
+                    self.cont.fix_all_differences()
+                    self.cont.csv_write(filename=args.input_name[0],
+                            fix_quotes=True)
+                else:
+                    self.cont.print_diff()
+
+                if args.ktm_code_log:
+                    self.cont.print_to_check(args.ktm_code_log[0])
+                else:
+                    if args.disp_code_to_check:
+                        self.cont.print_to_check()
             else:
-                self.cont.print_diff()
-
-            if args.ktm_code_log:
-                self.cont.print_to_check(args.ktm_code_log[0])
-            else:
-                if args.disp_code_to_check:
-                    self.cont.print_to_check()
+                print("Your file is empty or in wrong fomat")
 
         """
         if args.log_name:
@@ -179,21 +181,26 @@ class UserInterface:
                 initialdir = self.default_dir,
                 title = "Select file to check",
                 filetypes = (("csv files","*.csv"),("all files","*.*")))
-        self.master = master
-        self.master.title(TITLE+'\t\t\tfile:\t'+self.main_filename)
-        print(self.main_filename)
-        self.master.geometry('1250x500')
+        if self.cont.csv_read(filename=self.main_filename):
+            self.cont.sort_by()
+            self.cont.group()
 
-        self.cont.csv_read(filename=self.main_filename)
+            self.cont.find_diff_group()
 
-        self.cont.sort_by()
-        self.cont.group()
+            self.master = master
+            self.master.title(TITLE+'\t\t\tfile:\t'+self.main_filename)
+            print(self.main_filename)
+            self.master.geometry('1250x500')
 
-        self.cont.find_diff_group()
-
-        self.set_window()
-        self.show_differences()
-
+            self.set_window()
+            self.show_differences()
+        else:
+            tkMessageBox.showerror('Wrong file', 
+"""
+You file is empty
+or in wrong fomat
+""")
+            quit()
 
 
     def set_window(self, ktm_code=None,type_of_diff=None):
@@ -574,8 +581,10 @@ class Container:
 
         self.main_list_to_write = list(self.main_list)
 
-        if remove:
-            self.files_to_remove.append(filenam)
+        if len(self.main_list):
+            if len(self.main_list[0]) > self.cont_conf.max_c_idx():
+                return True
+        return False
 
     def csv_write(self, filename, output_data_format='format_2',
             remove=False, fix_quotes=False):
