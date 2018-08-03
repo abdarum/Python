@@ -952,17 +952,12 @@ class Container:
                     if i[1] == '0':
                         print(i[0])
 
-    def remove_unnecessary_quot_marks(self, debug_mode=False):
+    def remove_unnecessary_quot_marks(self, plain_text=False,
+            excel_format=False):
         for elem in range(0,len(self.main_list_to_write)):
             for field in range(0,len(self.main_list_to_write[elem])):
-                old = self.main_list_to_write[elem][field]
-                if self.main_list_to_write[elem][field].startswith('"'):
-                    self.main_list_to_write[elem][field] = \
-                            self.main_list_to_write[elem][field][1:] 
-                if self.main_list_to_write[elem][field].endswith('"'):
-                    self.main_list_to_write[elem][field] = \
-                            self.main_list_to_write[elem][field][:-1] 
-                self.main_list_to_write[elem][field] = \
+               old = self.main_list_to_write[elem][field]
+               self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u2018','\'') 
                 self.main_list_to_write[elem][field] = \
@@ -986,9 +981,16 @@ class Container:
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201f','"') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace('""','"') 
+                if plain_text:
+                    self.main_list_to_write[elem][field] = \
+                            self.main_list_to_write[elem][field].\
+                            replace('""','"') 
+                    if self.main_list_to_write[elem][field].startswith('"'):
+                        self.main_list_to_write[elem][field] = \
+                                self.main_list_to_write[elem][field][1:] 
+                    if self.main_list_to_write[elem][field].endswith('"'):
+                        self.main_list_to_write[elem][field] = \
+                                self.main_list_to_write[elem][field][:-1] 
                 if debug_mode and old != self.main_list_to_write[elem][field]:
                     print(old)
                     print(self.main_list_to_write[elem][field])
