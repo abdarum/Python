@@ -255,7 +255,12 @@ or in wrong fomat
         self.xpertis_csv_button = Tkinter.Button(self.master, 
                 text = "Xpertis csv", 
                 command = self.do_you_want_to_save_xpertis_file)
-        self.xpertis_csv_button.grid(row = 0, column = 2, sticky = Tkinter.W)
+        self.xpertis_csv_button.grid(row = 0, column = 2, 
+                sticky = Tkinter.W+Tkinter.E)
+        self.xpertis_csv_test_button = Tkinter.Button(self.master, 
+                text = "Xpertis TEST csv", 
+                command = self.do_you_want_to_save_xpertis_test_file)
+        self.xpertis_csv_test_button.grid(row = 1, column = 2, sticky = Tkinter.W)
  
 
 
@@ -440,9 +445,11 @@ in oryginal csv file?
 Do you want to save file
 with codes to check?
 """):
-                filename = tkFileDialog.asksaveasfilename(initialdir = "~/Desktop",
+                filename = tkFileDialog.asksaveasfilename(
+                        initialdir = "~/Desktop",
                         title = "Select file to save index to check",
-                        filetypes = (("csv files","*.csv"), ("all files","*.*")))
+                        filetypes = (("csv files","*.csv"), 
+                            ("all files","*.*")))
                 print(filename)
                 self.cont.print_to_check(filename)
             else:
@@ -457,16 +464,44 @@ with codes to check?
 Do you want to save your data
 in Xpertis csv format file?
 """):
-                filename = tkFileDialog.asksaveasfilename(initialdir = "~/Desktop",
+                filename = tkFileDialog.asksaveasfilename(
+                        initialdir = "~/Desktop",
                         title = "Select file to save Xpertis csv file",
-                        filetypes = (("csv files","*.csv"), ("all files","*.*")))
+                        filetypes = (("csv files","*.csv"), 
+                            ("all files","*.*")))
                 print(filename)
-                self.cont.csv_write(filename=filename,output_data_format='xpertis_csv',
+                self.cont.csv_write(filename=filename,
+                        output_data_format='xpertis_csv',
                         fix_quotes=True)
             else:
                 pass
         except:
             pass
+
+
+    def do_you_want_to_save_xpertis_test_file(self):
+        try:
+            if tkMessageBox.askyesno('Xpertis TEST file',
+"""
+Do you want to save your data
+in Xpertis csv format file?
+File is only for testing compatibility
+of this data and Xpertis database.
+"""):
+                filename = tkFileDialog.asksaveasfilename(
+                        initialdir = "~/Desktop",
+                        title = "Select file to save Xpertis TEST csv file",
+                        filetypes = (("csv files","*.csv"), 
+                            ("all files","*.*")))
+                print(filename)
+                self.cont.csv_write(filename=filename,
+                        output_data_format='xpertis_csv_test',
+                        fix_quotes=True)
+            else:
+                pass
+        except:
+            pass
+
 
 
     def show_help(self):
@@ -691,6 +726,38 @@ class Container:
                     data = data.replace('\\', '')
                     outfile.write(data)
             shutil.move(filename+'_tmp',filename)
+        elif output_data_format == 'xpertis_csv_test':
+            self.set_format_xpertis()
+            with open(filename, 'wb') as csvfile:
+                spamwriter = UnicodeWriter(csvfile,
+                        dialect=self.dialect_format_xpertis)
+                spamwriter.writerow([
+                    'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
+                    'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
+                    'Opis','El/Mech','Do napraw','Do eksploat'
+                    ])
+                for i in self.group_list:
+                    i = i[0]
+                    spamwriter.writerow([
+                       '','','','','',
+                       i[self.cont_conf.c_idx_of('schem_idx')],
+                       i[self.cont_conf.c_idx_of('ktm_code')],
+                       i[self.cont_conf.c_idx_of('qnt')],
+                       i[self.cont_conf.c_idx_of('descript')],
+                       i[self.cont_conf.c_idx_of('manuf_code')],
+                       '','','','','','',
+                       i[self.cont_conf.c_idx_of('page')],
+                       i[self.cont_conf.c_idx_of('idx')],
+                       i[self.cont_conf.c_idx_of('module_name')],
+                       i[self.cont_conf.c_idx_of('machine_name')]
+                       ])
+
+            with open(filename, 'r') as infile, \
+                open(filename+'_tmp', 'w') as outfile:
+                    data = infile.read()
+                    data = data.replace('\\', '')
+                    outfile.write(data)
+            shutil.move(filename+'_tmp',filename)
 
         else:
             print('Not recognised type of csv file')
@@ -716,6 +783,7 @@ class Container:
         self.main_list.sort(key=self.sort_by_key)
 
     def group(self):
+        self.group_list = list()
         if len(self.main_list)>1:
             self.group_list.append([])
             self.group_list[-1].append(self.main_list[0])
