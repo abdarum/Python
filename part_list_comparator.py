@@ -288,6 +288,9 @@ class UserInterface:
 
     def remove_quotes(self):
         self.cont.remove_unnecessary_quot_marks()
+        self.cont.find_diff_group()
+        self.insert_data()
+
 
     def show_differences(self):
         if len(self.cont.diff_group) > self.idx_of_data:
