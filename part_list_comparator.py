@@ -147,7 +147,8 @@ class UserInterface:
             self.cont.find_diff_group()
             if args.save_changes:
                 self.cont.fix_all_differences()
-                self.cont.csv_write(filename=args.input_name[0])
+                self.cont.csv_write(filename=args.input_name[0],
+                        fix_quotes=True)
             else:
                 self.cont.print_diff()
 
@@ -197,7 +198,7 @@ class UserInterface:
 
     def set_window(self, ktm_code=None,type_of_diff=None):
         self.master.bind("<KeyRelease>", self.on_return_release)
-        number_cols = 6
+        number_cols = 10
         number_rows = 3
         self.master.grid_columnconfigure((number_cols-1)-3,weight=1)
         self.master.config(background="lavender")
@@ -236,11 +237,14 @@ class UserInterface:
                 sticky = Tkinter.W)
         self.help_button = Tkinter.Button(self.master, text = "Help",
             command = self.show_help)
-        self.help_button.grid(row = 0, column = 1, sticky = Tkinter.W)
+        self.help_button.grid(row = 0, column = 2, sticky = Tkinter.W)
         self.save_and_exit_button = Tkinter.Button(self.master, 
                 text = "Save and Exit", command = self.stop_program)
         self.save_and_exit_button.grid(row = 0, column = 0, sticky = Tkinter.W)
-
+        self.quote_replace_button = Tkinter.Button(self.master, 
+                text = "Remove unnecessary quotes", command = self.remove_quotes)
+        self.quote_replace_button.grid(row = 0, column = 1, sticky = Tkinter.W)
+ 
 
 
 
@@ -267,7 +271,7 @@ class UserInterface:
         self.tree.column('#4', width=55, stretch=Tkinter.YES)
         self.tree.column('#5', width=200, stretch=Tkinter.YES)
         self.tree.column('#6', width=200, stretch=Tkinter.YES)
-        self.tree.grid(row=7, columnspan=7, sticky='nsew')
+        self.tree.grid(row=7, columnspan=number_cols, sticky='nsew')
         self.treeview = self.tree
 
     def clear_tree(self):
@@ -281,6 +285,9 @@ class UserInterface:
         while(True):
             self.do_you_want_to_save_index_to_check()
             self.do_you_want_to_save_main_file()
+
+    def remove_quotes(self):
+        self.cont.remove_unnecessary_quot_marks()
 
     def show_differences(self):
         if len(self.cont.diff_group) > self.idx_of_data:
@@ -399,7 +406,8 @@ Do you want to save your changes
 in oryginal csv file?
 """):
             if tkMessageBox.askyesno('Save changes?', "Are you sure?"):
-                self.cont.csv_write(filename=self.main_filename)
+                self.cont.csv_write(filename=self.main_filename,
+                        fix_quotes=True)
                 quit()
 
         else:
@@ -567,7 +575,7 @@ class Container:
             self.files_to_remove.append(filenam)
 
     def csv_write(self, filename, output_data_format='format_2',
-            remove=False):
+            remove=False, fix_quotes=False):
         """Read data from CSV file
 
         input_data_format:
@@ -578,6 +586,8 @@ class Container:
         if len(self.diff_group)>0:
             shutil.copyfile(filename,filename+'_bac')
 
+        if fix_quotes:
+            self.remove_unnecessary_quot_marks()
         if output_data_format is 'format_1':
             with open(filename, 'wb') as csvfile:
                 #with open(filename, newline='', encoding='utf-8') as csvfile:
@@ -800,6 +810,39 @@ class Container:
                 if len(i)>1:
                     if i[1] == '0':
                         print(i[0])
+
+    def remove_unnecessary_quot_marks(self, debug_mode=False):
+        for elem in range(0,len(self.main_list_to_write)):
+            for field in range(0,len(self.main_list_to_write[elem])):
+                old = self.main_list_to_write[elem][field]
+                if self.main_list_to_write[elem][field].startswith('"'):
+                    self.main_list_to_write[elem][field] = \
+                            self.main_list_to_write[elem][field][1:] 
+                if self.main_list_to_write[elem][field].endswith('"'):
+                    self.main_list_to_write[elem][field] = \
+                            self.main_list_to_write[elem][field][:-1] 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201c','"') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201d','"') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201e','"') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201f','"') 
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace('""','"') 
+                if debug_mode and old != self.main_list_to_write[elem][field]:
+                    print(old)
+                    print(self.main_list_to_write[elem][field])
+                    print('')
+        print('fixed double quote marks')
+
+
 
 
 
