@@ -205,31 +205,35 @@ or in wrong fomat
 
 
     def set_window(self, ktm_code=None,type_of_diff=None):
+        head_color = 'lavender'
         self.master.bind("<KeyRelease>", self.on_return_release)
         number_cols = 10
         number_rows = 3
         self.master.grid_columnconfigure((number_cols-1)-3,weight=1)
-        self.master.config(background="lavender")
+        self.master.config(background=head_color)
 
         # Define the different GUI widgets
-        self.ktm_code_label = Tkinter.Label(self.master, text = "Ktm code:")
+        self.ktm_code_label = Tkinter.Label(self.master, text = "Ktm code:",
+                background=head_color)
         self.ktm_code_label.grid(row = (number_rows-1)-2, 
                 column = (number_cols-1)-2, sticky = Tkinter.E)
-        self.ktm_code_data = Tkinter.Label(self.master, text = ktm_code)
+        self.ktm_code_data = Tkinter.Label(self.master, text = ktm_code,
+                background=head_color)
         self.ktm_code_data.grid(row = (number_rows-1)-2, 
                 column = (number_cols-1)-1, sticky = Tkinter.W)
 
         self.type_of_diff_label = Tkinter.Label(self.master,
-            text = "Type of diff:")
+            text = "Type of diff:",background=head_color)
         self.type_of_diff_label.grid(row = (number_rows-1), 
                 column = (number_cols-1)-2, sticky = Tkinter.E)
         self.type_of_diff_data = Tkinter.Label(self.master,
-            text = type_of_diff)
+            text = type_of_diff,background=head_color)
         self.type_of_diff_data.grid(row = (number_rows-1), 
                 column = (number_cols-1)-1, sticky = Tkinter.W)
 
 
-        self.modified_label = Tkinter.Label(self.master, text = "Your choose:")
+        self.modified_label = Tkinter.Label(self.master, text = "Your choose:",
+                background=head_color)
         self.modified_entry = Tkinter.Entry(self.master, width=10)
         self.modified_label.grid(row = (number_rows-1)-1, 
                 column = (number_cols-1)-2, sticky = Tkinter.E)
@@ -238,7 +242,7 @@ or in wrong fomat
         self.submit_button = Tkinter.Button(self.master, text = "Go",
             command = self.insert_data)
         self.submit_button.grid(row = (number_rows-1)-1, 
-                column = (number_cols-1), sticky = Tkinter.W)
+                column = (number_cols-1), sticky = Tkinter.W+Tkinter.E)
         self.skip_button = Tkinter.Button(self.master, text = "Skip",
             command = self.skip_data)
         self.skip_button.grid(row = (number_rows-1), column = (number_cols-1), 
