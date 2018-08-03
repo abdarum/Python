@@ -304,9 +304,8 @@ or in wrong fomat
 
     def stop_program(self):
         self.stop_program_var = True
-        while(True):
-            self.do_you_want_to_save_index_to_check()
-            self.do_you_want_to_save_main_file()
+        self.do_you_want_to_save_index_to_check()
+        self.do_you_want_to_save_main_file()
 
     def remove_quotes(self):
         self.cont.remove_unnecessary_quot_marks()
@@ -381,12 +380,6 @@ or in wrong fomat
             elif self.choose == 0:
                 self.box_insert_data_window()
 
-
-            self.show_differences()
-            if self.idx_of_data==len(self.cont.diff_group) and self.choose>-1:
-                self.stop_program()
-                print('fixed whole file')
-
         else:
             print('fixed whole file')
             self.stop_program()
@@ -439,7 +432,6 @@ in oryginal csv file?
                 self.cont.print_by_group()
                 quit()
             else:
-                self.do_you_want_to_save_main_file()
                 pass
 
     def do_you_want_to_save_index_to_check(self):
@@ -604,7 +596,6 @@ class DataConfiguration:
 
 class Container:
     def __init__(self):
-        #ogolna klasa dzialjaca bez konkretnych nazw
         self.cont_conf = DataConfiguration()
         self.main_list = list()
         self.main_list_to_write = list()
@@ -633,11 +624,9 @@ class Container:
             format_2 - utf-8
         """
         if input_data_format == 'format_1':
-            #with open(filename, newline='', encoding='utf-8') as csvfile:
             with open(filename, mode='rb') as csvfile:
                 reader = csv.reader(csvfile, delimiter='\t')
                 for row in reader:
-                    #print('\t'.join(row))
                     self.main_list.append(row)
 
         elif input_data_format == 'format_2':
@@ -645,7 +634,6 @@ class Container:
             with open(filename,'rb') as csvfile:
                 reader = UnicodeReader(csvfile,dialect=self.dialect_format2)
                 for row in reader:
-                    #print('\t'.join(row))
                     self.main_list.append(row)
 
         else:
@@ -676,7 +664,6 @@ class Container:
 
         if output_data_format == 'format_1':
             with open(filename, 'wb') as csvfile:
-                #with open(filename, newline='', encoding='utf-8') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter='\t',
                                         quoting=csv.QUOTE_NONE)
                 for i in self.main_list_to_write:
@@ -1007,9 +994,6 @@ class Container:
                     print(self.main_list_to_write[elem][field])
                     print('')
         print('fixed double quote marks')
-
-
-
 
 
 UserInterface()
