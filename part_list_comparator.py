@@ -10,6 +10,7 @@ import Tkinter
 import tkFileDialog
 import ttk
 import tkMessageBox
+import copy
 
 __author__ = 'Kornel Stefańczyk'
 __version__ = '1.0.1'
@@ -244,14 +245,19 @@ or in wrong fomat
                 sticky = Tkinter.W)
         self.help_button = Tkinter.Button(self.master, text = "Help",
             command = self.show_help)
-        self.help_button.grid(row = 0, column = 2, sticky = Tkinter.W)
+        self.help_button.grid(row = 0, column = 3, sticky = Tkinter.W)
         self.save_and_exit_button = Tkinter.Button(self.master, 
                 text = "Save and Exit", command = self.stop_program)
         self.save_and_exit_button.grid(row = 0, column = 0, sticky = Tkinter.W)
         self.quote_replace_button = Tkinter.Button(self.master, 
                 text = "Remove unnecessary quotes", command = self.remove_quotes)
         self.quote_replace_button.grid(row = 0, column = 1, sticky = Tkinter.W)
+        self.xpertis_csv_button = Tkinter.Button(self.master, 
+                text = "Xpertis csv", 
+                command = self.do_you_want_to_save_xpertis_file)
+        self.xpertis_csv_button.grid(row = 0, column = 2, sticky = Tkinter.W)
  
+
 
 
 
@@ -297,7 +303,6 @@ or in wrong fomat
         self.cont.remove_unnecessary_quot_marks()
         self.cont.find_diff_group()
         self.insert_data()
-
 
     def show_differences(self):
         if len(self.cont.diff_group) > self.idx_of_data:
@@ -431,10 +436,10 @@ in oryginal csv file?
     def do_you_want_to_save_index_to_check(self):
         try:
             if tkMessageBox.askyesno('Index CSV file',
-    """
-    Do you want to save file
-    with codes to check?
-    """):
+"""
+Do you want to save file
+with codes to check?
+"""):
                 filename = tkFileDialog.asksaveasfilename(initialdir = "~/Desktop",
                         title = "Select file to save index to check",
                         filetypes = (("csv files","*.csv"), ("all files","*.*")))
@@ -444,6 +449,25 @@ in oryginal csv file?
                 pass
         except:
             pass
+
+    def do_you_want_to_save_xpertis_file(self):
+        try:
+            if tkMessageBox.askyesno('Xpertis file',
+"""
+Do you want to save your data
+in Xpertis csv format file?
+"""):
+                filename = tkFileDialog.asksaveasfilename(initialdir = "~/Desktop",
+                        title = "Select file to save Xpertis csv file",
+                        filetypes = (("csv files","*.csv"), ("all files","*.*")))
+                print(filename)
+                self.cont.csv_write(filename=filename,output_data_format='xpertis_csv',
+                        fix_quotes=True)
+            else:
+                pass
+        except:
+            pass
+
 
     def show_help(self):
         text ="""
@@ -549,19 +573,27 @@ class Container:
         self.diff_group = list()
         self.tmp_sort_key = None
 
-        self.dialect_format2 = csv.excel_tab
+    def set_format2(self):
+        self.dialect_format2 = copy.deepcopy(csv.excel_tab)
         self.dialect_format2.quoting = csv.QUOTE_NONE
         self.dialect_format2.escapechar = '\\'
 
-    def csv_read(self, filename, input_data_format='format_2',
-            remove=False):
+    def set_format_xpertis(self):
+        self.dialect_format_xpertis = copy.deepcopy(csv.excel_tab)
+        self.dialect_format_xpertis.quoting = csv.QUOTE_NONE
+        self.dialect_format_xpertis.escapechar = '\\'
+        self.dialect_format_xpertis.delimiter = ';'
+
+
+
+    def csv_read(self, filename, input_data_format='format_2'):
         """Read data from CSV file
 
         input_data_format:
             format_1 - ansii
             format_2 - utf-8
         """
-        if input_data_format is 'format_1':
+        if input_data_format == 'format_1':
             #with open(filename, newline='', encoding='utf-8') as csvfile:
             with open(filename, mode='rb') as csvfile:
                 reader = csv.reader(csvfile, delimiter='\t')
@@ -569,7 +601,8 @@ class Container:
                     #print('\t'.join(row))
                     self.main_list.append(row)
 
-        elif input_data_format is 'format_2':
+        elif input_data_format == 'format_2':
+            self.set_format2()
             with open(filename,'rb') as csvfile:
                 reader = UnicodeReader(csvfile,dialect=self.dialect_format2)
                 for row in reader:
@@ -587,20 +620,22 @@ class Container:
         return False
 
     def csv_write(self, filename, output_data_format='format_2',
-            remove=False, fix_quotes=False):
+            fix_quotes=False):
         """Read data from CSV file
 
         input_data_format:
             format_1 - ansii
             format_2 - utf-8
+            xpertis_csv
         """
-
         if len(self.diff_group)>0:
-            shutil.copyfile(filename,filename+'_bac')
+            if os.path.isfile(filename):
+                shutil.copyfile(filename,filename+'_bac')
 
         if fix_quotes:
             self.remove_unnecessary_quot_marks()
-        if output_data_format is 'format_1':
+
+        if output_data_format == 'format_1':
             with open(filename, 'wb') as csvfile:
                 #with open(filename, newline='', encoding='utf-8') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter='\t',
@@ -609,7 +644,8 @@ class Container:
                     spamwriter.writerow(i)
 
 
-        elif output_data_format is 'format_2':
+        elif output_data_format == 'format_2':
+            self.set_format_2()
             with open(filename, 'wb') as csvfile:
                 spamwriter = UnicodeWriter(csvfile,
                         dialect=self.dialect_format2)
@@ -624,6 +660,40 @@ class Container:
                     outfile.write(data)
             shutil.move(filename+'_tmp',filename)
 
+        elif output_data_format == 'xpertis_csv':
+            self.set_format_xpertis()
+            with open(filename, 'wb') as csvfile:
+                spamwriter = UnicodeWriter(csvfile,
+                        dialect=self.dialect_format_xpertis)
+                spamwriter.writerow([
+                    'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
+                    'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
+                    'Opis','El/Mech','Do napraw','Do eksploat'
+                    ])
+                for i in self.main_list_to_write:
+                    spamwriter.writerow([
+                       '','','','','',
+                       i[self.cont_conf.c_idx_of('schem_idx')],
+                       i[self.cont_conf.c_idx_of('ktm_code')],
+                       i[self.cont_conf.c_idx_of('qnt')],
+                       i[self.cont_conf.c_idx_of('descript')],
+                       i[self.cont_conf.c_idx_of('manuf_code')],
+                       '','','','','','',
+                       i[self.cont_conf.c_idx_of('page')],
+                       i[self.cont_conf.c_idx_of('idx')],
+                       i[self.cont_conf.c_idx_of('module_name')],
+                       i[self.cont_conf.c_idx_of('machine_name')]
+                       ])
+
+            with open(filename, 'r') as infile, \
+                open(filename+'_tmp', 'w') as outfile:
+                    data = infile.read()
+                    data = data.replace('\\', '')
+                    outfile.write(data)
+            shutil.move(filename+'_tmp',filename)
+
+        else:
+            print('Not recognised type of csv file')
 
 
     def print_data(self):
