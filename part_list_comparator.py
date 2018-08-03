@@ -12,7 +12,7 @@ import ttk
 import tkMessageBox
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0'
+__version__ = '1.0.1'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -197,38 +197,50 @@ class UserInterface:
 
     def set_window(self, ktm_code=None,type_of_diff=None):
         self.master.bind("<KeyRelease>", self.on_return_release)
-        number_cols = 5
+        number_cols = 6
         number_rows = 3
-        self.master.grid_columnconfigure(0,weight=1)
+        self.master.grid_columnconfigure((number_cols-1)-3,weight=1)
         self.master.config(background="lavender")
 
         # Define the different GUI widgets
         self.ktm_code_label = Tkinter.Label(self.master, text = "Ktm code:")
-        self.ktm_code_label.grid(row = 0, column = 1, sticky = Tkinter.E)
+        self.ktm_code_label.grid(row = (number_rows-1)-2, 
+                column = (number_cols-1)-2, sticky = Tkinter.E)
         self.ktm_code_data = Tkinter.Label(self.master, text = ktm_code)
-        self.ktm_code_data.grid(row = 0, column = 2, sticky = Tkinter.W)
+        self.ktm_code_data.grid(row = (number_rows-1)-2, 
+                column = (number_cols-1)-1, sticky = Tkinter.W)
 
         self.type_of_diff_label = Tkinter.Label(self.master,
-                text = "Type of diff:")
-        self.type_of_diff_label.grid(row = 2, column = 1, sticky = Tkinter.E)
+            text = "Type of diff:")
+        self.type_of_diff_label.grid(row = (number_rows-1), 
+                column = (number_cols-1)-2, sticky = Tkinter.E)
         self.type_of_diff_data = Tkinter.Label(self.master,
-                text = type_of_diff)
-        self.type_of_diff_data.grid(row = 2, column = 2, sticky = Tkinter.W)
+            text = type_of_diff)
+        self.type_of_diff_data.grid(row = (number_rows-1), 
+                column = (number_cols-1)-1, sticky = Tkinter.W)
 
 
         self.modified_label = Tkinter.Label(self.master, text = "Your choose:")
         self.modified_entry = Tkinter.Entry(self.master, width=10)
-        self.modified_label.grid(row = 1, column = 1, sticky = Tkinter.E)
-        self.modified_entry.grid(row = 1, column = 2)
+        self.modified_label.grid(row = (number_rows-1)-1, 
+                column = (number_cols-1)-2, sticky = Tkinter.E)
+        self.modified_entry.grid(row = (number_rows-1)-1, 
+                column = (number_cols-1)-1)
         self.submit_button = Tkinter.Button(self.master, text = "Go",
-                command = self.insert_data)
-        self.submit_button.grid(row = 1, column = 4, sticky = Tkinter.W)
+            command = self.insert_data)
+        self.submit_button.grid(row = (number_rows-1)-1, 
+                column = (number_cols-1), sticky = Tkinter.W)
         self.skip_button = Tkinter.Button(self.master, text = "Skip",
-                command = self.skip_data)
-        self.skip_button.grid(row = 2, column = 4, sticky = Tkinter.W)
+            command = self.skip_data)
+        self.skip_button.grid(row = (number_rows-1), column = (number_cols-1), 
+                sticky = Tkinter.W)
         self.help_button = Tkinter.Button(self.master, text = "Help",
-                command = self.show_help)
-        self.help_button.grid(row = 0, column = 0, sticky = Tkinter.W)
+            command = self.show_help)
+        self.help_button.grid(row = 0, column = 1, sticky = Tkinter.W)
+        self.save_and_exit_button = Tkinter.Button(self.master, 
+                text = "Save and Exit", command = self.stop_program)
+        self.save_and_exit_button.grid(row = 0, column = 0, sticky = Tkinter.W)
+
 
 
 
