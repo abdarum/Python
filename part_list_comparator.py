@@ -684,7 +684,7 @@ class Container:
 
 
         elif output_data_format == 'format_2':
-            self.set_format_2()
+            self.set_format2()
             with open(filename, 'wb') as csvfile:
                 spamwriter = UnicodeWriter(csvfile,
                         dialect=self.dialect_format2)
