@@ -979,7 +979,7 @@ class Container:
                     if i[1] == '0':
                         print(i[0])
 
-    def remove_unnecessary_quot_marks(self, plain_text=True,
+    def remove_unnecessary_quot_marks(self, plain_text=False,
             excel_format=False,debug_mode=False):
         for elem in range(0,len(self.main_list_to_write)):
             for field in range(0,len(self.main_list_to_write[elem])):
