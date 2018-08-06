@@ -362,7 +362,11 @@ or in wrong fomat
 
     def insert_data(self):
         self.clear_tree()
+
+        self.cont.print_diff()
+
         if self.idx_of_data < len(self.cont.diff_group):
+            print(self.idx_of_data)
 
             self.choose = self.modified_entry.get()
             self.modified_entry.delete(0, 'end')
@@ -379,6 +383,8 @@ or in wrong fomat
 
             elif self.choose == 0:
                 self.box_insert_data_window()
+
+            self.show_differences()
 
         else:
             print('fixed whole file')
@@ -836,6 +842,7 @@ class Container:
     def print_diff_one_code(self,idx):
         i = self.diff_group[idx]
         print('\n\n')
+        print('Idx of differences: %s' %idx)
         print(i)
         print('')
         print("KTM code: "+str(i[0][0][self.cont_conf.\
@@ -952,46 +959,47 @@ class Container:
                     if i[1] == '0':
                         print(i[0])
 
-    def remove_unnecessary_quot_marks(self, plain_text=False,
-            excel_format=False):
+    def remove_unnecessary_quot_marks(self, plain_text=True,
+            excel_format=False,debug_mode=False):
         for elem in range(0,len(self.main_list_to_write)):
             for field in range(0,len(self.main_list_to_write[elem])):
                old = self.main_list_to_write[elem][field]
-               self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u2018','\'') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u2019','\'') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u201a','\'') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u201b','\'') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u201c','"') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u201d','"') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u201e','"') 
-                self.main_list_to_write[elem][field] = \
-                        self.main_list_to_write[elem][field].\
-                        replace(u'\u201f','"') 
-                if plain_text:
+               if plain_text:
                     self.main_list_to_write[elem][field] = \
                             self.main_list_to_write[elem][field].\
                             replace('""','"') 
                     if self.main_list_to_write[elem][field].startswith('"'):
                         self.main_list_to_write[elem][field] = \
                                 self.main_list_to_write[elem][field][1:] 
-                    if self.main_list_to_write[elem][field].endswith('"'):
-                        self.main_list_to_write[elem][field] = \
-                                self.main_list_to_write[elem][field][:-1] 
-                if debug_mode and old != self.main_list_to_write[elem][field]:
+                    if False:
+                        if self.main_list_to_write[elem][field].endswith('"'):
+                            self.main_list_to_write[elem][field] = \
+                                    self.main_list_to_write[elem][field][:-1] 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2018','\'') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2019','\'') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201a','\'') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201b','\'') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201c','"') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201d','"') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201e','"') 
+               self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u201f','"') 
+               if debug_mode and old != self.main_list_to_write[elem][field]:
                     print(old)
                     print(self.main_list_to_write[elem][field])
                     print('')
