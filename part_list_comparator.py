@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -116,8 +116,8 @@ def get_integer(text_to_display='', min_value=None,
 
 
 class UserInterface:
-    def __init__(self):
-        self.cont = Container()
+    def __init__(self,check_only_name=None):
+        self.cont = Container(check_only_name=check_only_name)
         self.default_dir = '~/Desktop'
         parser = argparse.ArgumentParser(description='Find diffrences '+
                  'in part list')
@@ -246,6 +246,10 @@ or in wrong fomat
         self.skip_button = Tkinter.Button(self.master, text = "Skip",
             command = self.skip_data)
         self.skip_button.grid(row = (number_rows-1), column = (number_cols-1), 
+                sticky = Tkinter.W+Tkinter.E)
+        self.back_button = Tkinter.Button(self.master, text = "Back",
+            command = self.back_data)
+        self.back_button.grid(row = (number_rows-1)-2, column = (number_cols-1), 
                 sticky = Tkinter.W)
         self.help_button = Tkinter.Button(self.master, text = "Help",
             command = self.show_help)
@@ -272,7 +276,7 @@ or in wrong fomat
 
         # Set the treeview
         self.tree = ttk.Treeview(self.master, columns=('','','','','',''),
-                height=50)
+                height=40)
         self.tree.heading('#0', text='Choose idx')
         self.tree.heading('#1', text='Diffrence')
         self.tree.heading('#2', text=self.cont.cont_conf.conf_list[
@@ -360,10 +364,16 @@ or in wrong fomat
         self.idx_of_data += 1
         self.insert_data()
 
+    def back_data(self):
+        if self.idx_of_data > 0: 
+            self.idx_of_data -= 1
+        self.insert_data()
+
+
     def insert_data(self):
         self.clear_tree()
 
-        self.cont.print_diff()
+        #self.cont.print_diff()
 
         if self.idx_of_data < len(self.cont.diff_group):
             print(self.idx_of_data)
@@ -537,7 +547,7 @@ class DataIndex:
 
 
 class DataConfiguration:
-    def __init__(self):
+    def __init__(self, check_only_name=None):
         self.conf_list = list()
         self.conf_list.append(DataIndex(name="idx",
             f_col=0, c_idx=0, descr="L,P,"))
@@ -561,6 +571,9 @@ class DataConfiguration:
             f_col=9, c_idx=9, descr="Funkcja"))
         self.conf_list.append(DataIndex(name="machine_name", f_col=10,
             c_idx=10, descr="Maszyna"))
+
+        if check_only_name:
+            self.check_only(check_only_name)
 
         self.sort_key_idx = self.c_idx_of('ktm_code')
 
@@ -599,10 +612,17 @@ class DataConfiguration:
                 return i.descr
          return None
 
+    def check_only(self, name):
+        for i in self.conf_list:
+            if i.name == name:
+                i.diffrent = False
+            else:
+                i.diffrent = True
+
 
 class Container:
-    def __init__(self):
-        self.cont_conf = DataConfiguration()
+    def __init__(self,check_only_name=None):
+        self.cont_conf = DataConfiguration(check_only_name=check_only_name)
         self.main_list = list()
         self.main_list_to_write = list()
         self.group_list = list()
@@ -842,7 +862,7 @@ class Container:
     def print_diff_one_code(self,idx):
         i = self.diff_group[idx]
         print('\n\n')
-        print('Idx of differences: %s' %idx)
+        print('Idx of differences: %s of %s' %(idx,len(self.diff_group)))
         print(i)
         print('')
         print("KTM code: "+str(i[0][0][self.cont_conf.\
@@ -963,47 +983,49 @@ class Container:
             excel_format=False,debug_mode=False):
         for elem in range(0,len(self.main_list_to_write)):
             for field in range(0,len(self.main_list_to_write[elem])):
-               old = self.main_list_to_write[elem][field]
-               if plain_text:
-                    self.main_list_to_write[elem][field] = \
-                            self.main_list_to_write[elem][field].\
-                            replace('""','"') 
-                    if self.main_list_to_write[elem][field].startswith('"'):
-                        self.main_list_to_write[elem][field] = \
-                                self.main_list_to_write[elem][field][1:] 
-                    if False:
+                old = self.main_list_to_write[elem][field]
+                if plain_text:
+                    if True:
+                        if self.main_list_to_write[elem][field].startswith('"'):
+                            self.main_list_to_write[elem][field] = \
+                                    self.main_list_to_write[elem][field][1:] 
                         if self.main_list_to_write[elem][field].endswith('"'):
                             self.main_list_to_write[elem][field] = \
                                     self.main_list_to_write[elem][field][:-1] 
-               self.main_list_to_write[elem][field] = \
+                        for i in range(0,4):
+                            self.main_list_to_write[elem][field] = \
+                                    self.main_list_to_write[elem][field].\
+                                    replace('""','"') 
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u2018','\'') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u2019','\'') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201a','\'') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201b','\'') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201c','"') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201d','"') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201e','"') 
-               self.main_list_to_write[elem][field] = \
+                self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201f','"') 
-               if debug_mode and old != self.main_list_to_write[elem][field]:
+                if debug_mode and old != self.main_list_to_write[elem][field]:
                     print(old)
                     print(self.main_list_to_write[elem][field])
                     print('')
         print('fixed double quote marks')
 
 
+#UserInterface(check_only_name='ktm_code')
 UserInterface()
