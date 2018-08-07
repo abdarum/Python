@@ -439,8 +439,7 @@ Do you want to save your changes
 in oryginal csv file?
 """):
             if tkMessageBox.askyesno('Save changes?', "Are you sure?"):
-                self.cont.csv_write(filename=self.main_filename,
-                        fix_quotes=True)
+                self.cont.csv_write(filename=self.main_filename)
                 quit()
 
         else:
@@ -483,8 +482,7 @@ in Xpertis csv format file?
                             ("all files","*.*")))
                 print(filename)
                 self.cont.csv_write(filename=filename,
-                        output_data_format='xpertis_csv',
-                        fix_quotes=True)
+                        output_data_format='xpertis_csv')
             else:
                 pass
         except:
@@ -507,8 +505,7 @@ of this data and Xpertis database.
                             ("all files","*.*")))
                 print(filename)
                 self.cont.csv_write(filename=filename,
-                        output_data_format='xpertis_csv_test',
-                        fix_quotes=True)
+                        output_data_format='xpertis_csv_test')
             else:
                 pass
         except:
@@ -629,20 +626,29 @@ class Container:
         self.diff_group = list()
         self.tmp_sort_key = None
 
-    def set_format2(self):
-        self.dialect_format2 = copy.deepcopy(csv.excel_tab)
-        self.dialect_format2.quoting = csv.QUOTE_NONE
-        self.dialect_format2.escapechar = '\\'
+    def set_format(self, remove_quotes_mode=False):
+        self.dialect_format = copy.deepcopy(csv.excel_tab)
+        if remove_quotes_mode: 
+            self.dialect_format.quoting = csv.QUOTE_NONE
+            self.dialect_format.escapechar = '\\'
+            self.dialect_format.delimiter = ';'
 
-    def set_format_xpertis(self):
-        self.dialect_format_xpertis = copy.deepcopy(csv.excel_tab)
-        self.dialect_format_xpertis.quoting = csv.QUOTE_NONE
-        self.dialect_format_xpertis.escapechar = '\\'
-        self.dialect_format_xpertis.delimiter = ';'
+        else:
+            self.dialect_format.quoting = csv.QUOTE_MINIMAL
+            self.dialect_format.delimiter = ';'
+
+    
+    def remove_backslash_from_file(self, filename):
+        with open(filename, 'r') as infile, \
+            open(filename+'_tmp', 'w') as outfile:
+                data = infile.read()
+                data = data.replace('\\', '')
+                outfile.write(data)
+        shutil.move(filename+'_tmp',filename)
 
 
-
-    def csv_read(self, filename, input_data_format='format_2'):
+    def csv_read(self, filename, input_data_format='format_2', 
+            remove_quotes=False):
         """Read data from CSV file
 
         input_data_format:
@@ -656,9 +662,9 @@ class Container:
                     self.main_list.append(row)
 
         elif input_data_format == 'format_2':
-            self.set_format2()
+            self.set_format()
             with open(filename,'rb') as csvfile:
-                reader = UnicodeReader(csvfile,dialect=self.dialect_format2)
+                reader = UnicodeReader(csvfile,dialect=self.dialect_format)
                 for row in reader:
                     self.main_list.append(row)
 
@@ -672,21 +678,19 @@ class Container:
                 return True
         return False
 
-    def csv_write(self, filename, output_data_format='format_2',
-            fix_quotes=False):
+    def csv_write(self, filename, output_data_format='format_2'):
         """Read data from CSV file
 
         input_data_format:
             format_1 - ansii
             format_2 - utf-8
             xpertis_csv
+            xpertis_csv_test
         """
         if len(self.diff_group)>0:
             if os.path.isfile(filename):
                 shutil.copyfile(filename,filename+'_bac')
 
-        if fix_quotes:
-            self.remove_unnecessary_quot_marks()
 
         if output_data_format == 'format_1':
             with open(filename, 'wb') as csvfile:
@@ -697,26 +701,20 @@ class Container:
 
 
         elif output_data_format == 'format_2':
-            self.set_format2()
+            self.set_format()
             with open(filename, 'wb') as csvfile:
                 spamwriter = UnicodeWriter(csvfile,
-                        dialect=self.dialect_format2)
+                        dialect=self.dialect_format)
 
                 for i in self.main_list_to_write:
                    spamwriter.writerow(i)
 
-            with open(filename, 'r') as infile, \
-                open(filename+'_tmp', 'w') as outfile:
-                    data = infile.read()
-                    data = data.replace('\\', '')
-                    outfile.write(data)
-            shutil.move(filename+'_tmp',filename)
-
         elif output_data_format == 'xpertis_csv':
-            self.set_format_xpertis()
+            self.remove_unnecessary_quot_marks(plain_text=True)
+            self.set_format(remove_quotes_mode=True)
             with open(filename, 'wb') as csvfile:
                 spamwriter = UnicodeWriter(csvfile,
-                        dialect=self.dialect_format_xpertis)
+                        dialect=self.dialect_format)
                 spamwriter.writerow([
                     'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
                     'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
@@ -737,17 +735,15 @@ class Container:
                        i[self.cont_conf.c_idx_of('machine_name')]
                        ])
 
-            with open(filename, 'r') as infile, \
-                open(filename+'_tmp', 'w') as outfile:
-                    data = infile.read()
-                    data = data.replace('\\', '')
-                    outfile.write(data)
-            shutil.move(filename+'_tmp',filename)
+            self.remove_backslash_from_file(filename)
+
+
         elif output_data_format == 'xpertis_csv_test':
-            self.set_format_xpertis()
+            self.remove_unnecessary_quot_marks(plain_text=True)
+            self.set_format(remove_quotes_mode=True)
             with open(filename, 'wb') as csvfile:
                 spamwriter = UnicodeWriter(csvfile,
-                        dialect=self.dialect_format_xpertis)
+                        dialect=self.dialect_format)
                 spamwriter.writerow([
                     'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
                     'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
@@ -768,13 +764,8 @@ class Container:
                        i[self.cont_conf.c_idx_of('module_name')],
                        i[self.cont_conf.c_idx_of('machine_name')]
                        ])
-
-            with open(filename, 'r') as infile, \
-                open(filename+'_tmp', 'w') as outfile:
-                    data = infile.read()
-                    data = data.replace('\\', '')
-                    outfile.write(data)
-            shutil.move(filename+'_tmp',filename)
+                    
+            self.remove_backslash_from_file(filename)
 
         else:
             print('Not recognised type of csv file')
@@ -980,19 +971,21 @@ class Container:
                         print(i[0])
 
     def remove_unnecessary_quot_marks(self, plain_text=False,
-            excel_format=False,debug_mode=False):
+            debug_mode=False):
         for elem in range(0,len(self.main_list_to_write)):
             for field in range(0,len(self.main_list_to_write[elem])):
                 old = self.main_list_to_write[elem][field]
                 if plain_text:
                     if True:
+                        """
                         if self.main_list_to_write[elem][field].startswith('"'):
                             self.main_list_to_write[elem][field] = \
                                     self.main_list_to_write[elem][field][1:] 
                         if self.main_list_to_write[elem][field].endswith('"'):
                             self.main_list_to_write[elem][field] = \
                                     self.main_list_to_write[elem][field][:-1] 
-                        for i in range(0,4):
+                        """
+                        for i in range(0,2):
                             self.main_list_to_write[elem][field] = \
                                     self.main_list_to_write[elem][field].\
                                     replace('""','"') 
