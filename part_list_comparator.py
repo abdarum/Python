@@ -568,6 +568,9 @@ class DataConfiguration:
             f_col=9, c_idx=9, descr="Funkcja"))
         self.conf_list.append(DataIndex(name="machine_name", f_col=10,
             c_idx=10, descr="Maszyna"))
+        self.conf_list.append(DataIndex(name="module_code", f_col=11,
+            c_idx=11, descr="Numer modułu"))
+
 
         if check_only_name:
             self.check_only(check_only_name)
@@ -722,7 +725,9 @@ class Container:
                     ])
                 for i in self.main_list_to_write:
                     spamwriter.writerow([
-                       '','','','','',
+                       '',
+                       i[self.cont_conf.c_idx_of('module_code')],
+                       '','','',
                        i[self.cont_conf.c_idx_of('schem_idx')],
                        i[self.cont_conf.c_idx_of('ktm_code')],
                        i[self.cont_conf.c_idx_of('qnt')],
