@@ -182,6 +182,8 @@ class UserInterface:
                 initialdir = self.default_dir,
                 title = "Select file to check",
                 filetypes = (("csv files","*.csv"),("all files","*.*")))
+        if self.main_filename == '':
+            self.remove_quotes_from_csv()
         if self.cont.csv_read(filename=self.main_filename):
             self.cont.sort_by()
             self.cont.group()
@@ -202,6 +204,32 @@ You file is empty
 or in wrong fomat
 """)
             quit()
+
+    def remove_quotes_from_csv(self):
+            tkMessageBox.showerror('Wrong file',
+"""
+Not choose file to compare
+
+In next window you will be
+able to remove unnecessary
+quotes char from selected file
+""")
+            remove_quotes_filename = tkFileDialog.askopenfilename(
+                    initialdir = self.default_dir,
+                    title = "Select file to remove quotes",
+                    filetypes = (("csv files","*.csv"),("all files","*.*")))
+
+            self.cont.csv_read(filename=remove_quotes_filename,
+                    input_data_format='format_rewrite')
+
+            self.cont.csv_write(filename=remove_quotes_filename,
+                    output_data_format='format_rewrite_without_quotes')
+            tkMessageBox.showerror('Removed quotes', 
+"""
+Removed quotes from file
+""")
+
+ 
 
 
     def set_window(self, ktm_code=None,type_of_diff=None):
@@ -670,6 +698,14 @@ class Container:
                 reader = UnicodeReader(csvfile,dialect=self.dialect_format)
                 for row in reader:
                     self.main_list.append(row)
+        elif input_data_format == 'format_rewrite':
+            self.set_format()
+            with open(filename,'rb') as csvfile:
+                self.rewrite_list = list()
+                reader = UnicodeReader(csvfile,dialect=self.dialect_format)
+                for row in reader:
+                    self.rewrite_list.append(row)
+
 
         else:
             print('Not recognised type of csv read')
@@ -681,7 +717,8 @@ class Container:
                 return True
         return False
 
-    def csv_write(self, filename, output_data_format='format_2'):
+    def csv_write(self, filename, output_data_format='format_2', 
+            list_to_write=None):
         """Read data from CSV file
 
         input_data_format:
@@ -711,6 +748,17 @@ class Container:
 
                 for i in self.main_list_to_write:
                    spamwriter.writerow(i)
+
+        elif output_data_format == 'format_rewrite_without_quotes':
+            self.remove_unnecessary_quot_marks(plain_text=True)
+            self.set_format(remove_quotes_mode=True)
+            with open(filename, 'wb') as csvfile:
+                spamwriter = UnicodeWriter(csvfile,
+                        dialect=self.dialect_format)
+
+                for i in self.rewrite_list:
+                    spamwriter.writerow(i)
+            self.remove_backslash_from_file(filename)
 
         elif output_data_format == 'xpertis_csv':
             self.remove_unnecessary_quot_marks(plain_text=True)
