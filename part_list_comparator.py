@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -296,7 +296,13 @@ Removed quotes from file
         self.xpertis_csv_test_button = Tkinter.Button(self.master, 
                 text = "Xpertis TEST csv", 
                 command = self.do_you_want_to_save_xpertis_test_file)
-        self.xpertis_csv_test_button.grid(row = 1, column = 2, sticky = Tkinter.W)
+        self.xpertis_csv_test_button.grid(row = 1, column = 2, 
+                sticky = Tkinter.W+Tkinter.E)
+        self.csv_test_button = Tkinter.Button(self.master, 
+                text = "TEST csv", 
+                command = self.do_you_want_to_save_main_file_format_test)
+        self.csv_test_button.grid(row = 2, column = 2, 
+                sticky = Tkinter.W+Tkinter.E)
  
 
 
@@ -477,6 +483,27 @@ in oryginal csv file?
             else:
                 pass
 
+    def do_you_want_to_save_main_file_format_test(self):
+        try:
+            if tkMessageBox.askyesno('Main CSV TEST file',
+"""
+Do you want to save TEST file
+in oryginal file format?
+"""):
+                filename = tkFileDialog.asksaveasfilename(
+                        initialdir = "~/Desktop",
+                        title = "Select file to save TEST csv file",
+                        filetypes = (("csv files","*.csv"), 
+                            ("all files","*.*")))
+                print(filename)
+                self.cont.csv_write(filename=filename,
+                        output_data_format='format_2_test')
+            else:
+                pass
+        except:
+            pass
+
+
     def do_you_want_to_save_index_to_check(self):
         try:
             if tkMessageBox.askyesno('Index CSV file',
@@ -598,6 +625,9 @@ class DataConfiguration:
             c_idx=10, descr="Maszyna"))
         self.conf_list.append(DataIndex(name="module_code", f_col=11,
             c_idx=11, descr="Numer modułu"))
+        self.conf_list.append(DataIndex(name="module_idx", f_col=12,
+            c_idx=12, descr="Kod modułu"))
+
 
 
         if check_only_name:
@@ -620,6 +650,13 @@ class DataConfiguration:
             if i.c_idx > max_idx:
                 max_idx = i.c_idx
         return max_idx
+
+    def min_required_c_idx(self):
+        idx = 0
+        for i in self.conf_list:
+            if i.c_idx > idx and i.diffrent == False:
+                idx = i.c_idx
+        return idx
 
     def must_be_equal(self,c_idx):
         for i in self.conf_list:
@@ -749,6 +786,15 @@ class Container:
                 for i in self.main_list_to_write:
                    spamwriter.writerow(i)
 
+        elif output_data_format == 'format_2_test':
+            self.set_format()
+            with open(filename, 'wb') as csvfile:
+                spamwriter = UnicodeWriter(csvfile,
+                        dialect=self.dialect_format)
+                for i in self.group_list:
+                    i = i[0]
+                    spamwriter.writerow(i)
+
         elif output_data_format == 'format_rewrite_without_quotes':
             self.remove_unnecessary_quot_marks(plain_text=True)
             self.set_format(remove_quotes_mode=True)
@@ -773,7 +819,7 @@ class Container:
                     ])
                 for i in self.main_list_to_write:
                     spamwriter.writerow([
-                       '',
+                       i[self.cont_conf.c_idx_of('module_idx')],
                        i[self.cont_conf.c_idx_of('module_code')],
                        '','','',
                        i[self.cont_conf.c_idx_of('schem_idx')],
