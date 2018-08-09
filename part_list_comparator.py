@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -178,6 +178,7 @@ class UserInterface:
         self.choose = None
         self.box_insert = False
         self.stop_program_var= False
+        self.master = master
         self.main_filename = tkFileDialog.askopenfilename(
                 initialdir = self.default_dir,
                 title = "Select file to check",
@@ -190,7 +191,6 @@ class UserInterface:
 
             self.cont.find_diff_group()
 
-            self.master = master
             self.master.title(TITLE+'\t\t\tfile:\t'+self.main_filename)
             print(self.main_filename)
             self.master.geometry('1250x500')
@@ -200,9 +200,12 @@ class UserInterface:
         else:
             tkMessageBox.showerror('Wrong file', 
 """
-You file is empty
-or in wrong fomat
+You file is empty or in wrong fomat
+
+Next window will show you
+correct csv file format
 """)
+            self.show_format_file()
             quit()
 
     def remove_quotes_from_csv(self):
@@ -569,13 +572,33 @@ of this data and Xpertis database.
 
 
     def show_help(self):
-        text ="""
+        text_info ="""
 Program was writed by
 """ + __author__ + """ in 1.08.2018
-email: """ + __email__ 
-        tkMessageBox.showinfo('Help, ver. '+__version__, text,
-        parent=self.master)
+email: """ + __email__+"""
 
+Do you want to see .
+csv file format?"""
+        if tkMessageBox.askyesno('Help, ver. '+__version__, text_info,
+                parent=self.master):
+            self.show_format_file()
+        else:
+            pass
+
+    def show_format_file(self):
+        text_format = """
+Your  delimiter should be  ; and
+your rows should consist
+
+"""
+        name_list = list()
+        char_list = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N',
+                'O','P','Q','R','S','T','U','V','W','X','Y','Z']
+        for i in self.cont.cont_conf.conf_list:
+            name_list.append(i.descr)
+        text_format = text_format + ";".join(name_list) +\
+            '\nYour last row should be \'' + char_list[len(name_list)-0] +'\''
+        tkMessageBox.showinfo('File format', text_format,parent=self.master)
 
 
 class DataIndex:
@@ -627,6 +650,9 @@ class DataConfiguration:
             c_idx=11, descr="Numer modułu"))
         self.conf_list.append(DataIndex(name="module_idx", f_col=12,
             c_idx=12, descr="Kod modułu"))
+        self.conf_list.append(DataIndex(name="el_mech", f_col=13,
+            c_idx=13, descr="El/Mech"))
+
 
 
 
@@ -827,7 +853,9 @@ class Container:
                        i[self.cont_conf.c_idx_of('qnt')],
                        i[self.cont_conf.c_idx_of('descript')],
                        i[self.cont_conf.c_idx_of('manuf_code')],
-                       '','','','','','',
+                       '',
+                       i[self.cont_conf.c_idx_of('el_mech')],
+                       '','','','',
                        i[self.cont_conf.c_idx_of('page')],
                        i[self.cont_conf.c_idx_of('idx')],
                        i[self.cont_conf.c_idx_of('module_name')],
