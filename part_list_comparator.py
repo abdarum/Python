@@ -597,7 +597,7 @@ your rows should consist
         for i in self.cont.cont_conf.conf_list:
             name_list.append(i.descr)
         text_format = text_format + ";".join(name_list) +\
-            '\nYour last column should be \'' + char_list[len(name_list)-0] +'\''
+            '\nYour last column should be \'' + char_list[len(name_list)-1] +'\''
         tkMessageBox.showinfo('File format', text_format,parent=self.master)
 
 
