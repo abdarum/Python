@@ -288,6 +288,9 @@ Removed quotes from file
         self.save_and_exit_button = Tkinter.Button(self.master, 
                 text = "Save and Exit", command = self.stop_program)
         self.save_and_exit_button.grid(row = 0, column = 0, sticky = Tkinter.W)
+        self.save_button = Tkinter.Button(self.master, 
+                text = "Save", command = self.save_without_exit)
+        self.save_button.grid(row = 1, column = 0, sticky = Tkinter.W+Tkinter.E)
         self.quote_replace_button = Tkinter.Button(self.master, 
                 text = "Remove unnecessary quotes", command = self.remove_quotes)
         self.quote_replace_button.grid(row = 0, column = 1, sticky = Tkinter.W)
@@ -347,6 +350,9 @@ Removed quotes from file
         self.stop_program_var = True
         self.do_you_want_to_save_index_to_check()
         self.do_you_want_to_save_main_file()
+
+    def save_without_exit(self):
+        self.do_you_want_to_save_main_file(quit=False)
 
     def remove_quotes(self):
         self.cont.remove_unnecessary_quot_marks()
@@ -469,7 +475,7 @@ Removed quotes from file
         self.box_insert = False
 
 
-    def do_you_want_to_save_main_file(self):
+    def do_you_want_to_save_main_file(self, quit=True):
         if tkMessageBox.askyesno('Main CSV file',
 """
 Do you want to save your changes
@@ -477,12 +483,14 @@ in oryginal csv file?
 """):
             if tkMessageBox.askyesno('Save changes?', "Are you sure?"):
                 self.cont.csv_write(filename=self.main_filename)
-                quit()
+                if quit:
+                    quit()
 
         else:
             if tkMessageBox.askyesno('Do not save changes?', "Are you sure?"):
                 self.cont.print_by_group()
-                quit()
+                if quit:
+                    quit()
             else:
                 pass
 
