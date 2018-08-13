@@ -1002,6 +1002,18 @@ class Container:
         for j in i[0]:
             print(j[i[1]])
 
+        self.print_xpertis_name(idx)
+        
+    def print_xpertis_name(self, idx):
+        i = self.diff_group[idx]
+        for j in i[0]:
+            if j[self.cont_conf.c_idx_of('idx')] == 'Xpertis':
+                print '\nXpertis'
+                print(j[i[1]])
+                break
+ 
+
+
     def fix_all_differences(self):
         if len(self.diff_group):
             self.choose_one_from_diff(diff_group_idx=i)
