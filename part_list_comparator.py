@@ -352,7 +352,7 @@ Removed quotes from file
         self.do_you_want_to_save_main_file()
 
     def save_without_exit(self):
-        self.do_you_want_to_save_main_file(quit=False)
+        self.do_you_want_to_save_main_file(quit_after_save=False)
 
     def remove_quotes(self):
         self.cont.remove_unnecessary_quot_marks()
@@ -475,7 +475,7 @@ Removed quotes from file
         self.box_insert = False
 
 
-    def do_you_want_to_save_main_file(self, quit=True):
+    def do_you_want_to_save_main_file(self, quit_after_save=True):
         if tkMessageBox.askyesno('Main CSV file',
 """
 Do you want to save your changes
@@ -483,13 +483,13 @@ in oryginal csv file?
 """):
             if tkMessageBox.askyesno('Save changes?', "Are you sure?"):
                 self.cont.csv_write(filename=self.main_filename)
-                if quit:
+                if quit_after_save:
                     quit()
 
         else:
             if tkMessageBox.askyesno('Do not save changes?', "Are you sure?"):
                 self.cont.print_by_group()
-                if quit:
+                if quit_after_save:
                     quit()
             else:
                 pass
