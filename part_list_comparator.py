@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.4'
+__version__ = '1.0.5'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -198,7 +198,7 @@ class UserInterface:
             self.set_window()
             self.show_differences()
         else:
-            tkMessageBox.showerror('Wrong file', 
+            tkMessageBox.showerror('Wrong file',
 """
 You file is empty or in wrong fomat
 
@@ -227,12 +227,12 @@ quotes char from selected file
 
             self.cont.csv_write(filename=remove_quotes_filename,
                     output_data_format='format_rewrite_without_quotes')
-            tkMessageBox.showerror('Removed quotes', 
+            tkMessageBox.showerror('Removed quotes',
 """
 Removed quotes from file
 """)
 
- 
+
 
 
     def set_window(self, ktm_code=None,type_of_diff=None):
@@ -246,70 +246,87 @@ Removed quotes from file
         # Define the different GUI widgets
         self.ktm_code_label = Tkinter.Label(self.master, text = "Ktm code:",
                 background=head_color)
-        self.ktm_code_label.grid(row = (number_rows-1)-2, 
+        self.ktm_code_label.grid(row = (number_rows-1)-2,
                 column = (number_cols-1)-2, sticky = Tkinter.E)
         self.ktm_code_data = Tkinter.Label(self.master, text = ktm_code,
                 background=head_color)
-        self.ktm_code_data.grid(row = (number_rows-1)-2, 
+        self.ktm_code_data.grid(row = (number_rows-1)-2,
                 column = (number_cols-1)-1, sticky = Tkinter.W)
 
         self.type_of_diff_label = Tkinter.Label(self.master,
             text = "Type of diff:",background=head_color)
-        self.type_of_diff_label.grid(row = (number_rows-1), 
+        self.type_of_diff_label.grid(row = (number_rows-1),
                 column = (number_cols-1)-2, sticky = Tkinter.E)
         self.type_of_diff_data = Tkinter.Label(self.master,
             text = type_of_diff,background=head_color)
-        self.type_of_diff_data.grid(row = (number_rows-1), 
+        self.type_of_diff_data.grid(row = (number_rows-1),
                 column = (number_cols-1)-1, sticky = Tkinter.W)
 
 
         self.modified_label = Tkinter.Label(self.master, text = "Your choose:",
                 background=head_color)
         self.modified_entry = Tkinter.Entry(self.master, width=10)
-        self.modified_label.grid(row = (number_rows-1)-1, 
+        self.modified_label.grid(row = (number_rows-1)-1,
                 column = (number_cols-1)-2, sticky = Tkinter.E)
-        self.modified_entry.grid(row = (number_rows-1)-1, 
+        self.modified_entry.grid(row = (number_rows-1)-1,
                 column = (number_cols-1)-1)
         self.submit_button = Tkinter.Button(self.master, text = "Go",
             command = self.insert_data)
-        self.submit_button.grid(row = (number_rows-1)-1, 
+        self.submit_button.grid(row = (number_rows-1)-1,
                 column = (number_cols-1), sticky = Tkinter.W+Tkinter.E)
         self.skip_button = Tkinter.Button(self.master, text = "Skip",
             command = self.skip_data)
-        self.skip_button.grid(row = (number_rows-1), column = (number_cols-1), 
+        self.skip_button.grid(row = (number_rows-1), column = (number_cols-1),
                 sticky = Tkinter.W+Tkinter.E)
         self.back_button = Tkinter.Button(self.master, text = "Back",
             command = self.back_data)
-        self.back_button.grid(row = (number_rows-1)-2, column = (number_cols-1), 
+        self.back_button.grid(row = (number_rows-1)-2, column = (number_cols-1),
                 sticky = Tkinter.W)
         self.help_button = Tkinter.Button(self.master, text = "Help",
             command = self.show_help)
         self.help_button.grid(row = 0, column = 3, sticky = Tkinter.W)
-        self.save_and_exit_button = Tkinter.Button(self.master, 
+        self.save_and_exit_button = Tkinter.Button(self.master,
                 text = "Save and Exit", command = self.stop_program)
         self.save_and_exit_button.grid(row = 0, column = 0, sticky = Tkinter.W)
-        self.save_button = Tkinter.Button(self.master, 
+        self.save_button = Tkinter.Button(self.master,
                 text = "Save", command = self.save_without_exit)
         self.save_button.grid(row = 1, column = 0, sticky = Tkinter.W+Tkinter.E)
-        self.quote_replace_button = Tkinter.Button(self.master, 
+        self.quote_replace_button = Tkinter.Button(self.master,
                 text = "Remove unnecessary quotes", command = self.remove_quotes)
         self.quote_replace_button.grid(row = 0, column = 1, sticky = Tkinter.W)
-        self.xpertis_csv_button = Tkinter.Button(self.master, 
-                text = "Xpertis csv", 
+        self.xpertis_csv_button = Tkinter.Button(self.master,
+                text = "Xpertis csv",
                 command = self.do_you_want_to_save_xpertis_file)
-        self.xpertis_csv_button.grid(row = 0, column = 2, 
+        self.xpertis_csv_button.grid(row = 0, column = 2,
                 sticky = Tkinter.W+Tkinter.E)
-        self.xpertis_csv_test_button = Tkinter.Button(self.master, 
-                text = "Xpertis TEST csv", 
+        self.xpertis_csv_test_button = Tkinter.Button(self.master,
+                text = "Xpertis TEST csv",
                 command = self.do_you_want_to_save_xpertis_test_file)
-        self.xpertis_csv_test_button.grid(row = 1, column = 2, 
+        self.xpertis_csv_test_button.grid(row = 1, column = 2,
                 sticky = Tkinter.W+Tkinter.E)
-        self.csv_test_button = Tkinter.Button(self.master, 
-                text = "TEST csv", 
+        self.csv_test_button = Tkinter.Button(self.master,
+                text = "TEST csv",
                 command = self.do_you_want_to_save_main_file_format_test)
-        self.csv_test_button.grid(row = 2, column = 2, 
+        self.csv_test_button.grid(row = 2, column = 2,
                 sticky = Tkinter.W+Tkinter.E)
- 
+
+        self.test_mode_var = Tkinter.StringVar(None, 'one')
+        #self.test_mode_frame = Tkinter.Frame(self.master, width=100,height=100,
+        #        background="Blue")
+        #self.test_mode_frame.grid(row = 1, column=3)
+        #self.test_mode_frame.pack()
+        self.test_mode_radoibutton = Tkinter.Radiobutton(self.master,
+                text='Only one code', variable=self.test_mode_var,
+                value='one', background=head_color)
+        self.test_mode_radoibutton.grid(row = 1, column = 3,
+                sticky = Tkinter.W)
+        self.test_mode_radoibutton = Tkinter.Radiobutton(self.master,
+                text='All variants', variable=self.test_mode_var,
+                value='all', background=head_color)
+        self.test_mode_radoibutton.grid(row = 2, column = 3,
+                sticky = Tkinter.W)
+        #self.test_mode_radiobutton.set('one')
+
 
 
 
@@ -339,6 +356,9 @@ Removed quotes from file
         self.tree.column('#6', width=200, stretch=Tkinter.YES)
         self.tree.grid(row=7, columnspan=number_cols, sticky='nsew')
         self.treeview = self.tree
+
+    def get_test_mode(self):
+        self.cont.test_mode_var = self.test_mode_var.get()
 
     def clear_tree(self):
         for item in self.tree.get_children():
@@ -408,7 +428,7 @@ Removed quotes from file
         self.insert_data()
 
     def back_data(self):
-        if self.idx_of_data > 0: 
+        if self.idx_of_data > 0:
             self.idx_of_data -= 1
         self.insert_data()
 
@@ -504,9 +524,10 @@ in oryginal file format?
                 filename = tkFileDialog.asksaveasfilename(
                         initialdir = "~/Desktop",
                         title = "Select file to save TEST csv file",
-                        filetypes = (("csv files","*.csv"), 
+                        filetypes = (("csv files","*.csv"),
                             ("all files","*.*")))
                 print(filename)
+                self.get_test_mode()
                 self.cont.csv_write(filename=filename,
                         output_data_format='format_2_test')
             else:
@@ -525,7 +546,7 @@ with codes to check?
                 filename = tkFileDialog.asksaveasfilename(
                         initialdir = "~/Desktop",
                         title = "Select file to save index to check",
-                        filetypes = (("csv files","*.csv"), 
+                        filetypes = (("csv files","*.csv"),
                             ("all files","*.*")))
                 print(filename)
                 self.cont.print_to_check(filename)
@@ -544,7 +565,7 @@ in Xpertis csv format file?
                 filename = tkFileDialog.asksaveasfilename(
                         initialdir = "~/Desktop",
                         title = "Select file to save Xpertis csv file",
-                        filetypes = (("csv files","*.csv"), 
+                        filetypes = (("csv files","*.csv"),
                             ("all files","*.*")))
                 print(filename)
                 self.cont.csv_write(filename=filename,
@@ -567,9 +588,10 @@ of this data and Xpertis database.
                 filename = tkFileDialog.asksaveasfilename(
                         initialdir = "~/Desktop",
                         title = "Select file to save Xpertis TEST csv file",
-                        filetypes = (("csv files","*.csv"), 
+                        filetypes = (("csv files","*.csv"),
                             ("all files","*.*")))
                 print(filename)
+                self.get_test_mode()
                 self.cont.csv_write(filename=filename,
                         output_data_format='xpertis_csv_test')
             else:
@@ -730,7 +752,7 @@ class Container:
 
     def set_format(self, remove_quotes_mode=False):
         self.dialect_format = copy.deepcopy(csv.excel_tab)
-        if remove_quotes_mode: 
+        if remove_quotes_mode:
             self.dialect_format.quoting = csv.QUOTE_NONE
             self.dialect_format.escapechar = '\\'
             self.dialect_format.delimiter = ';'
@@ -739,7 +761,7 @@ class Container:
             self.dialect_format.quoting = csv.QUOTE_MINIMAL
             self.dialect_format.delimiter = ';'
 
-    
+
     def remove_backslash_from_file(self, filename):
         with open(filename, 'r') as infile, \
             open(filename+'_tmp', 'w') as outfile:
@@ -749,7 +771,7 @@ class Container:
         shutil.move(filename+'_tmp',filename)
 
 
-    def csv_read(self, filename, input_data_format='format_2', 
+    def csv_read(self, filename, input_data_format='format_2',
             remove_quotes=False):
         """Read data from CSV file
 
@@ -788,8 +810,8 @@ class Container:
                 return True
         return False
 
-    def csv_write(self, filename, output_data_format='format_2', 
-            list_to_write=None):
+    def csv_write(self, filename, output_data_format='format_2',
+            list_to_write=None, test_mode=None):
         """Read data from CSV file
 
         input_data_format:
@@ -809,6 +831,7 @@ class Container:
                                         quoting=csv.QUOTE_NONE)
                 for i in self.main_list_to_write:
                     spamwriter.writerow(i)
+            print 'csv wrote'
 
 
         elif output_data_format == 'format_2':
@@ -819,15 +842,34 @@ class Container:
 
                 for i in self.main_list_to_write:
                    spamwriter.writerow(i)
+            print 'csv wrote'
 
         elif output_data_format == 'format_2_test':
             self.set_format()
-            with open(filename, 'wb') as csvfile:
-                spamwriter = UnicodeWriter(csvfile,
-                        dialect=self.dialect_format)
-                for i in self.group_list:
-                    i = i[0]
-                    spamwriter.writerow(i)
+            if test_mode is None:
+                test_mode = self.test_mode_var
+            if test_mode == 'one':
+                with open(filename, 'wb') as csvfile:
+                    spamwriter = UnicodeWriter(csvfile,
+                            dialect=self.dialect_format)
+                    for i in self.group_list:
+                        i = i[0]
+                        spamwriter.writerow(i)
+            elif test_mode == 'all':
+                with open(filename, 'wb') as csvfile:
+                    spamwriter = UnicodeWriter(csvfile,
+                            dialect=self.dialect_format)
+                    for i in self.group_list:
+                        i = i[0]
+                        if self.is_code_uniform(i[\
+                                self.cont_conf.c_idx_of('ktm_code')]):
+                            spamwriter.writerow(i)
+                        else:
+                            for j in self.return_list_of_diff(i[\
+                                self.cont_conf.c_idx_of('ktm_code')]):
+                                spamwriter.writerow(j)
+            print 'csv wrote'
+
 
         elif output_data_format == 'format_rewrite_without_quotes':
             self.remove_unnecessary_quot_marks(plain_text=True)
@@ -839,6 +881,7 @@ class Container:
                 for i in self.rewrite_list:
                     spamwriter.writerow(i)
             self.remove_backslash_from_file(filename)
+            print 'csv wrote'
 
         elif output_data_format == 'xpertis_csv':
             self.remove_unnecessary_quot_marks(plain_text=True)
@@ -871,36 +914,100 @@ class Container:
                        ])
 
             self.remove_backslash_from_file(filename)
-
+            print 'csv wrote'
 
         elif output_data_format == 'xpertis_csv_test':
-            self.remove_unnecessary_quot_marks(plain_text=True)
-            self.set_format(remove_quotes_mode=True)
-            with open(filename, 'wb') as csvfile:
-                spamwriter = UnicodeWriter(csvfile,
-                        dialect=self.dialect_format)
-                spamwriter.writerow([
-                    'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
-                    'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
-                    'Opis','El/Mech','Do napraw','Do eksploat'
-                    ])
-                for i in self.group_list:
-                    i = i[0]
+            if test_mode is None:
+                test_mode = self.test_mode_var
+            if test_mode == 'one':
+                self.remove_unnecessary_quot_marks(plain_text=True)
+                self.set_format(remove_quotes_mode=True)
+                with open(filename, 'wb') as csvfile:
+                    spamwriter = UnicodeWriter(csvfile,
+                            dialect=self.dialect_format)
                     spamwriter.writerow([
-                       '','','','','',
-                       i[self.cont_conf.c_idx_of('schem_idx')],
-                       i[self.cont_conf.c_idx_of('ktm_code')],
-                       i[self.cont_conf.c_idx_of('qnt')],
-                       i[self.cont_conf.c_idx_of('descript')],
-                       i[self.cont_conf.c_idx_of('manuf_code')],
-                       '','','','','','',
-                       i[self.cont_conf.c_idx_of('page')],
-                       i[self.cont_conf.c_idx_of('idx')],
-                       i[self.cont_conf.c_idx_of('module_name')],
-                       i[self.cont_conf.c_idx_of('machine_name')]
-                       ])
-                    
-            self.remove_backslash_from_file(filename)
+                        'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
+                        'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
+                        'Opis','El/Mech','Do napraw','Do eksploat'
+                        ])
+                    for i in self.group_list:
+                        i = i[0]
+                        spamwriter.writerow([
+                        '','','','','',
+                        i[self.cont_conf.c_idx_of('schem_idx')],
+                        i[self.cont_conf.c_idx_of('ktm_code')],
+                        i[self.cont_conf.c_idx_of('qnt')],
+                        i[self.cont_conf.c_idx_of('descript')],
+                        i[self.cont_conf.c_idx_of('manuf_code')],
+                        '','','','','','',
+                        i[self.cont_conf.c_idx_of('page')],
+                        i[self.cont_conf.c_idx_of('idx')],
+                        i[self.cont_conf.c_idx_of('module_name')],
+                        i[self.cont_conf.c_idx_of('machine_name')]
+                        ])
+
+                self.remove_backslash_from_file(filename)
+            elif test_mode == 'all':
+                with open(filename, 'wb') as csvfile:
+                    spamwriter = UnicodeWriter(csvfile,
+                            dialect=self.dialect_format)
+                    for i in self.group_list:
+                        i = i[0]
+                        if self.is_code_uniform(i[\
+                                self.cont_conf.c_idx_of('ktm_code')]):
+                            spamwriter.writerow(i)
+                        else:
+                            for j in self.return_list_of_diff(i[\
+                                self.cont_conf.c_idx_of('ktm_code')]):
+                                spamwriter.writerow(j)
+                pass
+                self.remove_unnecessary_quot_marks(plain_text=True)
+                self.set_format(remove_quotes_mode=True)
+                with open(filename, 'wb') as csvfile:
+                    spamwriter = UnicodeWriter(csvfile,
+                            dialect=self.dialect_format)
+                    spamwriter.writerow([
+                        'Modul','Zespol', 'Zespol2', 'Zespol3', 'Zespol4',
+                        'Nr','Nr czesci','Sztuk','Nazwa','Kod znormalizowany',
+                        'Opis','El/Mech','Do napraw','Do eksploat'
+                        ])
+                    for i in self.group_list:
+                        i = i[0]
+                        if self.is_code_uniform(i[\
+                                self.cont_conf.c_idx_of('ktm_code')]):
+                            spamwriter.writerow([
+                            '','','','','',
+                            i[self.cont_conf.c_idx_of('schem_idx')],
+                            i[self.cont_conf.c_idx_of('ktm_code')],
+                            i[self.cont_conf.c_idx_of('qnt')],
+                            i[self.cont_conf.c_idx_of('descript')],
+                            i[self.cont_conf.c_idx_of('manuf_code')],
+                            '','','','','','',
+                            i[self.cont_conf.c_idx_of('page')],
+                            i[self.cont_conf.c_idx_of('idx')],
+                            i[self.cont_conf.c_idx_of('module_name')],
+                            i[self.cont_conf.c_idx_of('machine_name')]
+                            ])
+                        else:
+                            for j in self.return_list_of_diff(i[\
+                                self.cont_conf.c_idx_of('ktm_code')]):
+
+                                spamwriter.writerow([
+                                '','','','','',
+                                j[self.cont_conf.c_idx_of('schem_idx')],
+                                j[self.cont_conf.c_idx_of('ktm_code')],
+                                j[self.cont_conf.c_idx_of('qnt')],
+                                j[self.cont_conf.c_idx_of('descript')],
+                                j[self.cont_conf.c_idx_of('manuf_code')],
+                                '','','','','','',
+                                j[self.cont_conf.c_idx_of('page')],
+                                j[self.cont_conf.c_idx_of('idx')],
+                                j[self.cont_conf.c_idx_of('module_name')],
+                                j[self.cont_conf.c_idx_of('machine_name')]
+                                ])
+
+                self.remove_backslash_from_file(filename)
+            print 'csv wrote'
 
         else:
             print('Not recognised type of csv file')
@@ -974,6 +1081,21 @@ class Container:
                                 self.cont_conf.descr_c_idx(idx)])
                         """
 
+    def is_code_uniform(self, code):
+        for i in self.diff_group:
+            i = i[0]
+            if code == i[0][self.cont_conf.c_idx_of('ktm_code')]:
+                return False
+        return True
+
+    def return_list_of_diff(self, code):
+        for i in self.diff_group:
+            i = i[0]
+            if code == i[0][self.cont_conf.c_idx_of('ktm_code')]:
+                return i
+        return None
+
+
 
 
     def print_diff(self):
@@ -1003,7 +1125,7 @@ class Container:
             print(j[i[1]])
 
         self.print_xpertis_name(idx)
-        
+
     def print_xpertis_name(self, idx):
         i = self.diff_group[idx]
         for j in i[0]:
@@ -1011,7 +1133,7 @@ class Container:
                 print '\nXpertis'
                 print(j[i[1]])
                 break
- 
+
 
 
     def fix_all_differences(self):
@@ -1127,39 +1249,39 @@ class Container:
                         """
                         if self.main_list_to_write[elem][field].startswith('"'):
                             self.main_list_to_write[elem][field] = \
-                                    self.main_list_to_write[elem][field][1:] 
+                                    self.main_list_to_write[elem][field][1:]
                         if self.main_list_to_write[elem][field].endswith('"'):
                             self.main_list_to_write[elem][field] = \
-                                    self.main_list_to_write[elem][field][:-1] 
+                                    self.main_list_to_write[elem][field][:-1]
                         """
                         for i in range(0,2):
                             self.main_list_to_write[elem][field] = \
                                     self.main_list_to_write[elem][field].\
-                                    replace('""','"') 
+                                    replace('""','"')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u2018','\'') 
+                        replace(u'\u2018','\'')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u2019','\'') 
+                        replace(u'\u2019','\'')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u201a','\'') 
+                        replace(u'\u201a','\'')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u201b','\'') 
+                        replace(u'\u201b','\'')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u201c','"') 
+                        replace(u'\u201c','"')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u201d','"') 
+                        replace(u'\u201d','"')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u201e','"') 
+                        replace(u'\u201e','"')
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
-                        replace(u'\u201f','"') 
+                        replace(u'\u201f','"')
                 if debug_mode and old != self.main_list_to_write[elem][field]:
                     print(old)
                     print(self.main_list_to_write[elem][field])
