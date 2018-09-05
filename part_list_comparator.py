@@ -177,7 +177,6 @@ class UserInterface:
         self.idx_of_data = 0
         self.choose = None
         self.box_insert = False
-        self.stop_program_var= False
         self.master = master
         self.main_filename = tkFileDialog.askopenfilename(
                 initialdir = self.default_dir,
@@ -367,7 +366,6 @@ Removed quotes from file
             self.type_of_diff_data.config(text='')
 
     def stop_program(self):
-        self.stop_program_var = True
         self.do_you_want_to_save_index_to_check()
         self.do_you_want_to_save_main_file()
 
@@ -408,7 +406,7 @@ Removed quotes from file
 
     def on_return_release(self, event):
         #print(event.keysym)
-        if not self.stop_program_var:
+        if self.idx_of_data < len(self.cont.diff_group):
             if event.keysym=='Return' or event.keysym=='KP_Enter':
                 if self.box_insert:
                     self.box_insert_data()
@@ -1282,6 +1280,19 @@ class Container:
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u201f','"')
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2012','-')
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2013','-')
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2014','-')
+                self.main_list_to_write[elem][field] = \
+                        self.main_list_to_write[elem][field].\
+                        replace(u'\u2015','-')
+
                 if debug_mode and old != self.main_list_to_write[elem][field]:
                     print(old)
                     print(self.main_list_to_write[elem][field])
