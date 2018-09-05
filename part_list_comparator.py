@@ -674,12 +674,19 @@ class DataConfiguration:
             f_col=9, c_idx=9, descr="Funkcja"))
         self.conf_list.append(DataIndex(name="machine_name", f_col=10,
             c_idx=10, descr="Maszyna"))
-        self.conf_list.append(DataIndex(name="module_code", f_col=11,
-            c_idx=11, descr="Numer modułu"))
-        self.conf_list.append(DataIndex(name="module_idx", f_col=12,
-            c_idx=12, descr="Kod modułu"))
-        self.conf_list.append(DataIndex(name="el_mech", f_col=13,
-            c_idx=13, descr="El/Mech"))
+        self.conf_list.append(DataIndex(name="group0_name", f_col=11,
+            c_idx=11, descr="Kod modułu"))
+        self.conf_list.append(DataIndex(name="group1_name", f_col=12,
+            c_idx=12, descr="Kod grupy1"))
+        self.conf_list.append(DataIndex(name="group2_name", f_col=13,
+            c_idx=13, descr="Kod grupy2"))
+        self.conf_list.append(DataIndex(name="group3_name", f_col=14,
+            c_idx=14, descr="Kod grupy3"))
+        self.conf_list.append(DataIndex(name="group4_name", f_col=15,
+            c_idx=15, descr="Kod grupy4"))
+
+        self.conf_list.append(DataIndex(name="el_mech", f_col=16,
+            c_idx=16, descr="El/Mech"))
 
 
 
@@ -894,9 +901,11 @@ class Container:
                     ])
                 for i in self.main_list_to_write:
                     spamwriter.writerow([
-                       i[self.cont_conf.c_idx_of('module_idx')],
-                       i[self.cont_conf.c_idx_of('module_code')],
-                       '','','',
+                       i[self.cont_conf.c_idx_of('group0_name')],
+                       i[self.cont_conf.c_idx_of('group1_name')],
+                       i[self.cont_conf.c_idx_of('group2_name')],
+                       i[self.cont_conf.c_idx_of('group3_name')],
+                       i[self.cont_conf.c_idx_of('group4_name')],
                        i[self.cont_conf.c_idx_of('schem_idx')],
                        i[self.cont_conf.c_idx_of('ktm_code')],
                        i[self.cont_conf.c_idx_of('qnt')],
