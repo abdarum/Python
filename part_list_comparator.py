@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.7'
+__version__ = '1.0.8'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -798,6 +798,7 @@ class Container:
             format_1 - ansii
             format_2 - utf-8
         """
+        self.main_list = list()
         if input_data_format == 'format_1':
             with open(filename, mode='rb') as csvfile:
                 reader = csv.reader(csvfile, delimiter='\t')
