@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.5'
+__version__ = '1.0.7'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -290,6 +290,9 @@ Removed quotes from file
         self.save_button = Tkinter.Button(self.master,
                 text = "Save", command = self.save_without_exit)
         self.save_button.grid(row = 1, column = 0, sticky = Tkinter.W+Tkinter.E)
+        self.reload_file_button = Tkinter.Button(self.master,
+                text = "Reload file", command = self.reload_file)
+        self.reload_file_button.grid(row = 2, column = 0, sticky = Tkinter.W+Tkinter.E)
         self.quote_replace_button = Tkinter.Button(self.master,
                 text = "Remove unnecessary quotes", command = self.remove_quotes)
         self.quote_replace_button.grid(row = 0, column = 1, sticky = Tkinter.W)
@@ -355,6 +358,17 @@ Removed quotes from file
         self.tree.column('#6', width=200, stretch=Tkinter.YES)
         self.tree.grid(row=7, columnspan=number_cols, sticky='nsew')
         self.treeview = self.tree
+
+    def reload_file(self):
+        self.cont.csv_read(filename=self.main_filename)
+        self.cont.sort_by()
+        self.cont.group()
+
+        self.cont.find_diff_group()
+        self.clear_tree()
+        self.show_differences()
+        print "reload"
+ 
 
     def get_test_mode(self):
         self.cont.test_mode_var = self.test_mode_var.get()
