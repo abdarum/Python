@@ -1132,7 +1132,7 @@ class Container:
     def print_diff_one_code(self,idx):
         i = self.diff_group[idx]
         print('\n\n')
-        print('Idx of differences: %s of %s' %(idx,len(self.diff_group)))
+        print('Idx of differences: %s of %s' %(idx+1,len(self.diff_group)))
         print(i)
         print('')
         print("KTM code: "+str(i[0][0][self.cont_conf.\
