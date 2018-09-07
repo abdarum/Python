@@ -13,7 +13,7 @@ import tkMessageBox
 import copy
 
 __author__ = 'Kornel Stefańczyk'
-__version__ = '1.0.8'
+__version__ = '1.0.9'
 __email__ = 'kornelstefanczyk@wp.pl'
 
 #constant
@@ -685,7 +685,7 @@ class DataConfiguration:
         self.conf_list.append(DataIndex(name="descript",
             f_col=8, c_idx=8, descr="Opis", diffrent=False))
         self.conf_list.append(DataIndex(name="module_name",
-            f_col=9, c_idx=9, descr="Funkcja"))
+            f_col=9, c_idx=9, descr="Funkcja(Moduł)"))
         self.conf_list.append(DataIndex(name="machine_name", f_col=10,
             c_idx=10, descr="Maszyna"))
         self.conf_list.append(DataIndex(name="group0_name", f_col=11,
@@ -1238,7 +1238,7 @@ class Container:
         else:
             if os.path.exists(log_file_check):
                 with open(log_file_check, 'rb') as csvfile:
-                    reader = csv.reader(csvfile, delimiter='\t')
+                    reader = csv.reader(csvfile, delimiter=';')
                     for row in reader:
                         list_check_file.append(row)
                 for i in list_of_main_parameter:
@@ -1316,6 +1316,10 @@ class Container:
                 self.main_list_to_write[elem][field] = \
                         self.main_list_to_write[elem][field].\
                         replace(u'\u2015','-')
+
+                while self.main_list_to_write[elem][field].endswith(' '):
+                    self.main_list_to_write[elem][field] = \
+                            self.main_list_to_write[elem][field][:-1]
 
                 if debug_mode and old != self.main_list_to_write[elem][field]:
                     print(old)
