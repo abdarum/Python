@@ -1,5 +1,6 @@
-from pynput import mouse
-from pynput import keyboard
+#from pynput import mouse
+#from pynput import keyboard
+import pynput
 import logging
 import time
 
@@ -9,13 +10,13 @@ def main():
             format='%(asctime)s: %(message)s')
 
     global virtual_keyboard
-    virtual_keyboard = keyboard.Controller()
+    virtual_keyboard = pynput.keyboard.Controller()
 
     global was_pressed
     was_pressed = False
 
 
-    with mouse.Listener(on_move=on_move, on_click=on_click,
+    with pynput.mouse.Listener(on_move=on_move, on_click=on_click,
             on_scroll=on_scroll) as listener:
         listener.join()
 
@@ -33,17 +34,17 @@ def on_click(x, y, button, pressed):
 
         debug("pressed "+str(button))
         #elif was_pressed:
-        if button == mouse.Button.left:
+        if button == pynput.mouse.Button.left:
             debug("pressed left")
-            virtual_keyboard.press(keyboard.Key.right)
-            virtual_keyboard.release(keyboard.Key.right)
-        if button == mouse.Button.right:
+            virtual_keyboard.press(pynput.keyboard.Key.right)
+            virtual_keyboard.release(pynput.keyboard.Key.right)
+        if button == pynput.mouse.Button.right:
             debug("pressed right")
             time.sleep(.20)
-            virtual_keyboard.press(keyboard.Key.esc)
-            virtual_keyboard.release(keyboard.Key.esc)
-            virtual_keyboard.press(keyboard.Key.left)
-            virtual_keyboard.release(keyboard.Key.left)
+            virtual_keyboard.press(pynput.keyboard.Key.esc)
+            virtual_keyboard.release(pynput.keyboard.Key.esc)
+            virtual_keyboard.press(pynput.keyboard.Key.left)
+            virtual_keyboard.release(pynput.keyboard.Key.left)
 
 
 def on_scroll(x, y, dx, dy):
