@@ -26,6 +26,11 @@ class Duplicates:
     def create_duplicate(self, paths):
         # 'paths' is list of paths containing duplicated files
         #todo
+
+        # for path in paths:
+        #     for i in self.list_of_duplicate_items:
+        #         os.path.split(path)[1]
+        
         print('create duplicates')
         pprint.pprint(paths)
         print("")
@@ -41,9 +46,11 @@ class Duplicates:
 
     def duplicate_exist_in_base(self, paths):
         # 'paths' is list of paths containing duplicated files
-        #todo
-        return True
-        # return False
+        for path in paths:
+            for i in self.list_of_duplicate_items:
+                if i.name == os.path.split(path)[1]:
+                    return True
+        return False
 
 class DirectoryStructure:
     def __init__(self, root_directory=None):
