@@ -1,11 +1,7 @@
 import os
 import pprint
 import sys
-import getopt
-
-argv = sys.argv[1:]
-# https://www.datacamp.com/community/tutorials/argument-parsing-in-python?utm_source=adwords_ppc&utm_campaignid=1455363063&utm_adgroupid=65083631748&utm_device=c&utm_keyword=&utm_matchtype=b&utm_network=g&utm_adpostion=&utm_creative=278443377086&utm_targetid=aud-438999696719:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=9067607&gclid=CjwKCAjwqML6BRAHEiwAdquMnY-Y7T09n7dDoispZbw9IMz_YumA5TonX1G-lZLVwW1ljzNIdP4HCxoCj88QAvD_BwE
-
+import argparse
 
 # source_path      = "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne"
 # destination_path = "C:\\Kornel_Zdjecia\\Camera"
@@ -159,15 +155,54 @@ class DirectoryStructure:
         for f in self.delete_from_current_directory:
             print("DELETE: File will be deleted:\n{}\n".format(f))
 
-source = DirectoryStructure(source_path, skip_duplicates=skip_duplicates_global)
-source.scan_directory()
-# source.print_warnings()
-# source.print_ignored()
-# source.print_duplicates()
+# source = DirectoryStructure(source_path, skip_duplicates=skip_duplicates_global)
+# source.scan_directory()
+# # source.print_warnings()
+# # source.print_ignored()
+# # source.print_duplicates()
 
-destination = DirectoryStructure(destination_path, skip_duplicates=skip_duplicates_global)
-destination.scan_directory()
-destination.prepare_to_delete_existing_files(source)
-destination.print_prepared_to_delete()
-print("")
-# destination.delete_prepared_files()
+# destination = DirectoryStructure(destination_path, skip_duplicates=skip_duplicates_global)
+# destination.scan_directory()
+# destination.prepare_to_delete_existing_files(source)
+# destination.print_prepared_to_delete()
+# print("")
+# # destination.delete_prepared_files()
+
+
+
+def parse_and_execute_cli():    
+# https://www.datacamp.com/community/tutorials/argument-parsing-in-python?utm_source=adwords_ppc&utm_campaignid=1455363063&utm_adgroupid=65083631748&utm_device=c&utm_keyword=&utm_matchtype=b&utm_network=g&utm_adpostion=&utm_creative=278443377086&utm_targetid=aud-438999696719:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=9067607&gclid=CjwKCAjwqML6BRAHEiwAdquMnY-Y7T09n7dDoispZbw9IMz_YumA5TonX1G-lZLVwW1ljzNIdP4HCxoCj88QAvD_BwE
+    # Construct the argument parser
+    ap = argparse.ArgumentParser()
+
+    # Add the arguments to the parser
+    ap.add_argument("-s", "--source", required=False,
+    help="path of source directory")
+    ap.add_argument("-d", "--destination", required=False,
+    help="path of destination directory")
+    ap.add_argument("-S", "--skip", required=False,
+    help="skip duplicates(True/False) default: "+str(skip_duplicates_global))
+    args = vars(ap.parse_args())
+
+    if len(sys.argv)==1:
+        ap.print_help()
+    #     sys.exit(1)
+
+    # Calculate the sum
+    # print("Sum is {}".format(int(args['foperand']) + int(args['soperand'])))
+
+    if args['source'] != None:
+        source_path = args['source']
+
+    if args['destination'] != None:
+        destination_path = args['destination']
+
+    #todo pawrse to boolean
+    # if args['skip'] != None:
+    #     skip_duplicates_global = args['skip']
+
+    source = DirectoryStructure(source_path, skip_duplicates=skip_duplicates_global)
+    destination = DirectoryStructure(destination_path, skip_duplicates=skip_duplicates_global)
+
+
+parse_and_execute_cli()
