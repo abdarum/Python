@@ -1,6 +1,11 @@
 import os
 import pprint
 import sys
+import getopt
+
+argv = sys.argv[1:]
+# https://www.datacamp.com/community/tutorials/argument-parsing-in-python?utm_source=adwords_ppc&utm_campaignid=1455363063&utm_adgroupid=65083631748&utm_device=c&utm_keyword=&utm_matchtype=b&utm_network=g&utm_adpostion=&utm_creative=278443377086&utm_targetid=aud-438999696719:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=9067607&gclid=CjwKCAjwqML6BRAHEiwAdquMnY-Y7T09n7dDoispZbw9IMz_YumA5TonX1G-lZLVwW1ljzNIdP4HCxoCj88QAvD_BwE
+
 
 # source_path      = "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne"
 # destination_path = "C:\\Kornel_Zdjecia\\Camera"
