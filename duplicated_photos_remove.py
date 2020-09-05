@@ -168,7 +168,21 @@ class DirectoryStructure:
 # print("")
 # # destination.delete_prepared_files()
 
+def auto_scan_directories(sources, destinations, delete_files, skip_duplicates):
+    for d in destinations:
+        for s in sources:
+            source = DirectoryStructure(s, skip_duplicates=skip_duplicates)
+            source.scan_directory()
+            source.print_warnings()
+            source.print_ignored()
+            source.print_duplicates()
 
+            destination = DirectoryStructure(d, skip_duplicates=skip_duplicates)
+            destination.scan_directory()
+            destination.prepare_to_delete_existing_files(source)
+            destination.print_prepared_to_delete()
+            if delete_files:
+                destination.delete_prepared_files()
 
 def parse_and_execute_cli():    
 # https://www.datacamp.com/community/tutorials/argument-parsing-in-python?utm_source=adwords_ppc&utm_campaignid=1455363063&utm_adgroupid=65083631748&utm_device=c&utm_keyword=&utm_matchtype=b&utm_network=g&utm_adpostion=&utm_creative=278443377086&utm_targetid=aud-438999696719:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=9067607&gclid=CjwKCAjwqML6BRAHEiwAdquMnY-Y7T09n7dDoispZbw9IMz_YumA5TonX1G-lZLVwW1ljzNIdP4HCxoCj88QAvD_BwE
@@ -205,4 +219,10 @@ def parse_and_execute_cli():
     destination = DirectoryStructure(destination_path, skip_duplicates=skip_duplicates_global)
 
 
-parse_and_execute_cli()
+if Flase:
+    parse_and_execute_cli()
+else:
+    auto_scan_directories(sources = ["C:\\Kornel_Zdjecia\\Camera", "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne"], 
+                            destinations = ["C:\\Kornel_Zdjecia\\telefon_tmp"], 
+                            delete_files=True, 
+                            skip_duplicates=True)
