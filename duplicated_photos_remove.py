@@ -17,7 +17,9 @@ skip_duplicates_global = True
 # skip_duplicates_global = False
 
 
-TRUSTED_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG']
+TRUSTED_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG',
+                      '.mp4', '.MP4'
+                      ]
 IGNORED_EXTENSIONS = ['.txt']
 
 class Duplicates:
@@ -168,7 +170,7 @@ class DirectoryStructure:
 # print("")
 # # destination.delete_prepared_files()
 
-def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose):
+def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose, no_action):
     for d in destinations:
         for s in sources:
             source = DirectoryStructure(s, skip_duplicates=skip_duplicates)
@@ -186,7 +188,10 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
                 destination.print_ignored()
                 destination.print_duplicates()
 
-            if delete_files:
+            if no_action:
+                destination.prepare_to_delete_existing_files(source)
+                destination.print_prepared_to_delete()
+            elif delete_files:
                 destination.prepare_to_delete_existing_files(source)
                 if verbose == True:
                     destination.print_prepared_to_delete()
@@ -240,11 +245,12 @@ def parse_and_execute_cli():
         sys.exit(1)
 
     if args['preset'] == True:
-        auto_scan_directories(sources = ["C:\\Kornel_Zdjecia\\Camera", "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne"], 
+        auto_scan_directories(sources = ["C:\\Kornel_Zdjecia\\Camera", "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne", "C:\\Kornel_Zdjecia\\___Movie_Gallery_Gotowe_finalne"], 
                                 destinations = ["C:\\Kornel_Zdjecia\\telefon_tmp"], 
                                 delete_files=True, 
                                 skip_duplicates=True,
-                                verbose=args['verbose'])
+                                verbose=args['verbose'],
+                                no_action=args['no_action'])
         sys.exit(1)
 
     assert (args['source'] != None) and (args['destination'] != None), "source and destination have to be set"
