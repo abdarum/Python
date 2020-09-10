@@ -157,18 +157,6 @@ class DirectoryStructure:
         for f in self.delete_from_current_directory:
             print("DELETE: File will be deleted:\n{}\n".format(f))
 
-# source = DirectoryStructure(source_path, skip_duplicates=skip_duplicates_global)
-# source.scan_directory()
-# # source.print_warnings()
-# # source.print_ignored()
-# # source.print_duplicates()
-
-# destination = DirectoryStructure(destination_path, skip_duplicates=skip_duplicates_global)
-# destination.scan_directory()
-# destination.prepare_to_delete_existing_files(source)
-# destination.print_prepared_to_delete()
-# print("")
-# # destination.delete_prepared_files()
 
 def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose, no_action):
     for d in destinations:
@@ -197,26 +185,9 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
                     destination.print_prepared_to_delete()
                 destination.delete_prepared_files()
 
-def parse_boolean_from_string(old_value, string_to_parse):
-    if string_to_parse  != None:
-        string_to_parse = string_to_parse.lower()
-        string_to_parse = string_to_parse.replace(" ", "")
-        if string_to_parse in ['true', 't', 'yes', 'y', '1']:
-            return True
-        elif string_to_parse in ['false', 'f', 'no', 'n', '0']:    
-            return False
-        else:
-            return None
-    else:
-        return old_value
-    
 
 def parse_and_execute_cli():    
 # https://www.datacamp.com/community/tutorials/argument-parsing-in-python?utm_source=adwords_ppc&utm_campaignid=1455363063&utm_adgroupid=65083631748&utm_device=c&utm_keyword=&utm_matchtype=b&utm_network=g&utm_adpostion=&utm_creative=278443377086&utm_targetid=aud-438999696719:dsa-429603003980&utm_loc_interest_ms=&utm_loc_physical_ms=9067607&gclid=CjwKCAjwqML6BRAHEiwAdquMnY-Y7T09n7dDoispZbw9IMz_YumA5TonX1G-lZLVwW1ljzNIdP4HCxoCj88QAvD_BwE
-    #CLI global variables
-    skip_duplicates_bool = True
-    delete_files_bool = False
-
     ap = argparse.ArgumentParser()
 
     # Add the arguments to the parser
@@ -226,10 +197,10 @@ def parse_and_execute_cli():
     help="path of source directory")
     ap.add_argument("-d", "--destination", required=False,
     help="path of destination directory")
-    ap.add_argument("-m", "--skip_duplicates", required=False,
-    help="skip duplicates(True/False or 1/0 or yes/no), default: "+str(skip_duplicates_bool))
-    ap.add_argument("-r", "--delete_files", required=False,
-    help="delete files existing in source(True/False or 1/0 or yes/no), default: "+str(delete_files_bool))
+    ap.add_argument("-a", "--accept_duplicates", required=False, action="store_false",
+    help="NO skip duplicates, by default duplicated files are skipped")
+    ap.add_argument("-r", "--delete_files", required=False, action="store_true",
+    help="delete files existing in source, default: False")
     ap.add_argument("-n", "--no_action", required=False, action="store_true",
     help="explain what would be deleted, but there is no action in file system, default: False")
     ap.add_argument("-v", "--verbose", required=False, action="store_true",
@@ -247,46 +218,48 @@ def parse_and_execute_cli():
     if args['preset'] == True:
         auto_scan_directories(sources = ["C:\\Kornel_Zdjecia\\Camera", "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne", "C:\\Kornel_Zdjecia\\___Movie_Gallery_Gotowe_finalne"], 
                                 destinations = ["C:\\Kornel_Zdjecia\\telefon_tmp"], 
-                                delete_files=True, 
-                                skip_duplicates=True,
+                                delete_files=args['delete_files'], 
+                                skip_duplicates=args['accept_duplicates'],
                                 verbose=args['verbose'],
                                 no_action=args['no_action'])
         sys.exit(1)
 
-    assert (args['source'] != None) and (args['destination'] != None), "source and destination have to be set"
+    if (args['source'] == None) and (args['destination'] == None):
+            print("source or destination have to be set")
+            sys.exit(1)
 
     if args['source'] != None:
         source_path = args['source']
+        source = DirectoryStructure(source_path, skip_duplicates=args['accept_duplicates'])
+        source.scan_directory()
+        if args['verbose'] == True:
+            print("\n\tSource\n")
+            source.print_warnings()
+            source.print_ignored()
+            source.print_duplicates()
 
     if args['destination'] != None:
         destination_path = args['destination']
-
-    skip_duplicates_bool = parse_boolean_from_string(skip_duplicates_bool, args['skip_duplicates'])
-    delete_files_bool = parse_boolean_from_string(delete_files_bool, args['delete_files'])
-
-    source = DirectoryStructure(source_path, skip_duplicates=skip_duplicates_bool)
-    destination = DirectoryStructure(destination_path, skip_duplicates=skip_duplicates_bool)
-    source.scan_directory()
-    destination.scan_directory()
-
-    if args['verbose'] == True:
-        print("\n\tSource\n")
-        source.print_warnings()
-        source.print_ignored()
-        source.print_duplicates()
-        print("\n\tDestination\n")
-        destination.print_warnings()
-        destination.print_ignored()
-        destination.print_duplicates()
-
-    if (args['no_action'] == True): # (args['verbose'] == True) and delete_files_bool and 
-        destination.prepare_to_delete_existing_files(source)
-        destination.print_prepared_to_delete()
-    elif delete_files_bool:
+        destination = DirectoryStructure(destination_path, skip_duplicates=args['accept_duplicates'])
+        destination.scan_directory()
         if args['verbose'] == True:
+            print("\n\tDestination\n")
+            destination.print_warnings()
+            destination.print_ignored()
+            destination.print_duplicates()
+
+
+    if ((args['source'] != None) and (args['destination'] != None)):
+        if (args['no_action'] == True):
             destination.prepare_to_delete_existing_files(source)
             destination.print_prepared_to_delete()
-        destination.delete_prepared_files()
+        elif args['delete_files']:
+            if args['verbose'] == True:
+                destination.prepare_to_delete_existing_files(source)
+                destination.print_prepared_to_delete()
+            destination.delete_prepared_files()
+    elif ((args['delete_files'] == True) or (args['no_action'] == True)):
+        print("To activate \"no_action\" or \"verbose\" source and destination should be set")
 
 
 parse_and_execute_cli()
