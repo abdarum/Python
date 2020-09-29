@@ -52,19 +52,30 @@ class UserInterface:
 
 
         parser = argparse.ArgumentParser(description='Cleaning trash '
-                +'created by sending docs to Kindle via Internet')
+                +'created by sending docs to Kindle via Internet '+
+                'and removing books from Kindle device\n\n'+
+                'Script features:'+
+                '\n\t* list files in main dir downloaded from the internet'+
+                ' and allows to move it to separate directory'+
+                '\n\t* list trash after removing books from the Kindle device'+
+                ' and allows to remove trash files',
+                formatter_class=argparse.RawTextHelpFormatter)
 
-        parser.add_argument('-m', '--main-path', action='store', nargs=1,
-                help='path to main dir, default dir where you are')
+        parser.add_argument('-m', '--main-path', action='store', nargs=1, 
+                required=True,
+                help='path to main dir on Kindle device e.g. \'G:\\documents\' ')
         parser.add_argument('-s', '--stk-dir-name', action='store', nargs=1,
-                help='name of send to Kindle folder')
+                help='name of send to Kindle folder(should be subdirectory '+
+                    '--main-path),'+
+                    '\ndefault: \'MAIN_PATH\\send_to_kindle\''+
+                    ', if not exist it is created')
 
         #group = parser.add_mutually_exclusive_group()
         group = parser
 
         only_display__mode = group.add_argument_group('only display')
         only_display__mode.add_argument('-P', '--only-display', action='store_true',
-                help='only display info')
+                help='only display info, move and delete is not processed')
 
         normal_mode = group.add_argument_group('normal')
         normal_mode.add_argument('-f', '--force', action='store_true',
