@@ -203,6 +203,8 @@ def parse_and_execute_cli():
     help="delete files existing in source, default: False")
     ap.add_argument("-n", "--no_action", required=False, action="store_true",
     help="explain what would be deleted, but there is no action in file system, default: False")
+    ap.add_argument("-e", "--export_sorted_newest", required=False, type=int,
+    help="export sorted files newer than number of days from source to destination directory\nNote source and destination has to be set")
     ap.add_argument("-v", "--verbose", required=False, action="store_true",
     help="explain what is being done")
     ###############################
@@ -223,6 +225,18 @@ def parse_and_execute_cli():
                                 verbose=args['verbose'],
                                 no_action=args['no_action'])
         sys.exit(1)
+
+    if args['export_sorted_newest'] != None:
+        if (args['source'] != None) and (args['destination'] != None):
+            #todo
+            #scan with dates
+            # move only from main dir in source to dest
+            sys.exit(1)
+        else:
+            print("source and destination have to be set")
+            sys.exit(1)
+
+
 
     if (args['source'] == None) and (args['destination'] == None):
             print("source or destination have to be set")
