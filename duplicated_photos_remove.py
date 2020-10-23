@@ -238,8 +238,8 @@ def parse_and_execute_cli():
     help="delete files existing in source, default: False")
     ap.add_argument("-n", "--no_action", required=False, action="store_true",
     help="explain what would be deleted, but there is no action in file system, default: False")
-    ap.add_argument("-e", "--export_sorted_newest", required=False, type=int,
-    help="export sorted files newer than number of days from source to destination directory\nNote source and destination has to be set")
+    ap.add_argument("-e", "--export_sorted_newest", required=False, action="store_true",
+    help="export sorted files from source to destination directory.\nNote: the source and the destination paths have to be set")
     ap.add_argument("-v", "--verbose", required=False, action="store_true",
     help="explain what is being done")
     ###############################
@@ -262,7 +262,7 @@ def parse_and_execute_cli():
         sys.exit(1)
 
     if args['export_sorted_newest'] != None:
-        # python.exe .\duplicated_photos_remove.py -e 5 -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
+        # python.exe .\duplicated_photos_remove.py -e -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
         if (args['source'] != None) and (args['destination'] != None):
             source_path = args['source']
             source = DirectoryStructure(source_path, skip_duplicates=False)
