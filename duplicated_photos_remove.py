@@ -116,6 +116,22 @@ class DirectoryStructure:
         result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
         [self.classify_file(file_path) for file_path in result]
 
+    def scan_directory_for_export(self, full_file_path=None):
+        if full_file_path is None:
+            full_file_path = self.root_directory
+        if self.skip_duplicates:
+            pass
+        else:
+            # python.exe .\duplicated_photos_remove.py -e 5 -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
+            print("\n\n\n")
+            print(full_file_path)
+            print("\n\n\n")
+            result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
+            [print(file_path) for file_path in result]
+
+            # sss
+            pass
+
     def find_duplicates_in_current_directory(self, full_file_path):
         if os.path.split(full_file_path)[1] in [os.path.split(f)[1] for f in self.trusted_files]:
             if self.duplicated_files.duplicate_exist_in_base([full_file_path]):
@@ -228,6 +244,12 @@ def parse_and_execute_cli():
 
     if args['export_sorted_newest'] != None:
         if (args['source'] != None) and (args['destination'] != None):
+            source_path = args['source']
+            source = DirectoryStructure(source_path, skip_duplicates=False)
+            source.scan_directory_for_export()
+            
+            destination_path = args['destination']
+
             #todo
             #scan with dates
             # move only from main dir in source to dest
