@@ -2,6 +2,7 @@ import os
 import pprint
 import sys
 import argparse
+import shutil 
 
 # source_path      = "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne"
 # destination_path = "C:\\Kornel_Zdjecia\\Camera"
@@ -129,9 +130,6 @@ class DirectoryStructure:
             if os.path.sep+excl+os.path.sep in os.path.splitext(full_file_path)[0]]
             if len(excluded_dir) == 0 and extension in EXPORT_EXTENSIONS:
                 self.trusted_files.append(full_file_path)
-                print("+-"+str(full_file_path))
-            else:
-                print("--"+str(full_file_path))
         else:
             duplicates = [f for f in self.trusted_files if (os.path.split(f)[1] == os.path.split(full_file_path)[1])]
             for d in duplicates:
@@ -143,19 +141,15 @@ class DirectoryStructure:
         if self.skip_duplicates:
             pass
         else:
-            # python.exe .\duplicated_photos_remove.py -e 5 -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
-            print("\n\n\n")
-            print(full_file_path)
-            print("\n\n\n")
             result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
             [self.classify_file_for_export(file_path) for file_path in result]
 
-            # sss
-            pass
-
     def export_sorted_to_destination(self, destination_path):
-        # Extract path from path exclude root path
-        pass
+        for export_source_path in self.trusted_files:
+            export_relative_path = export_source_path.replace(self.root_directory, '')
+            export_destination_path = destination_path + export_relative_path
+            os.makedirs(os.path.dirname(export_destination_path), exist_ok=True)
+            shutil.copyfile(export_source_path, export_destination_path)
 
     def find_duplicates_in_current_directory(self, full_file_path):
         if os.path.split(full_file_path)[1] in [os.path.split(f)[1] for f in self.trusted_files]:
@@ -268,6 +262,7 @@ def parse_and_execute_cli():
         sys.exit(1)
 
     if args['export_sorted_newest'] != None:
+        # python.exe .\duplicated_photos_remove.py -e 5 -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
         if (args['source'] != None) and (args['destination'] != None):
             source_path = args['source']
             source = DirectoryStructure(source_path, skip_duplicates=False)
@@ -277,9 +272,6 @@ def parse_and_execute_cli():
 
             source.export_sorted_to_destination(destination_path)
 
-            #todo
-            #scan with dates
-            # move only from main dir in source to dest
             sys.exit(1)
         else:
             print("source and destination have to be set")
