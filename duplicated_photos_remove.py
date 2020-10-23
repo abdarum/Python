@@ -17,6 +17,8 @@ skip_duplicates_global = True
 # skip_duplicates_global = False
 
 
+EXPORT_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG' ]
+EXPORT_EXCLUDE_DIR = ['Wszystkie', 'All']
 TRUSTED_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG',
                       '.mp4', '.MP4'
                       ]
@@ -116,6 +118,25 @@ class DirectoryStructure:
         result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
         [self.classify_file(file_path) for file_path in result]
 
+    def classify_file_for_export(self, full_file_path):
+        if not (self.find_duplicates_in_current_directory(full_file_path) \
+            and self.skip_duplicates):    
+            extension = os.path.splitext(full_file_path)[1]
+            excluded_dir = []
+
+            [excluded_dir.append(excl) 
+            for excl in EXPORT_EXCLUDE_DIR 
+            if os.path.sep+excl+os.path.sep in os.path.splitext(full_file_path)[0]]
+            if len(excluded_dir) == 0 and extension in EXPORT_EXTENSIONS:
+                self.trusted_files.append(full_file_path)
+                print("+-"+str(full_file_path))
+            else:
+                print("--"+str(full_file_path))
+        else:
+            duplicates = [f for f in self.trusted_files if (os.path.split(f)[1] == os.path.split(full_file_path)[1])]
+            for d in duplicates:
+                self.trusted_files.remove(d)
+
     def scan_directory_for_export(self, full_file_path=None):
         if full_file_path is None:
             full_file_path = self.root_directory
@@ -127,10 +148,14 @@ class DirectoryStructure:
             print(full_file_path)
             print("\n\n\n")
             result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
-            [print(file_path) for file_path in result]
+            [self.classify_file_for_export(file_path) for file_path in result]
 
             # sss
             pass
+
+    def export_sorted_to_destination(self, destination_path):
+        # Extract path from path exclude root path
+        pass
 
     def find_duplicates_in_current_directory(self, full_file_path):
         if os.path.split(full_file_path)[1] in [os.path.split(f)[1] for f in self.trusted_files]:
@@ -249,6 +274,8 @@ def parse_and_execute_cli():
             source.scan_directory_for_export()
             
             destination_path = args['destination']
+
+            source.export_sorted_to_destination(destination_path)
 
             #todo
             #scan with dates
