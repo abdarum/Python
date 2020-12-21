@@ -3,14 +3,10 @@ import pprint
 import sys
 import argparse
 import shutil 
-
-# source_path      = "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne"
-# destination_path = "C:\\Kornel_Zdjecia\\Camera"
-
-
-# source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_Camera2"
-# destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_Gallery_backup"
-
+# image compress
+from PIL import Image
+import PIL
+import glob
 
 source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source"
 destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source_helper"
@@ -145,11 +141,16 @@ class DirectoryStructure:
             [self.classify_file_for_export(file_path) for file_path in result]
 
     def export_sorted_to_destination(self, destination_path):
+        progress_val = 0
         for export_source_path in self.trusted_files:
             export_relative_path = export_source_path.replace(self.root_directory, '')
             export_destination_path = destination_path + export_relative_path
             os.makedirs(os.path.dirname(export_destination_path), exist_ok=True)
             shutil.copyfile(export_source_path, export_destination_path)
+            picture = Image.open(export_destination_path)
+            picture.save(export_destination_path,optimize=True,quality=30) 
+            print('Progress: {:.2f}%'.format(progress_val))
+            progress_val = self.trusted_files.index(export_source_path)/len(self.trusted_files)*100
 
     def find_duplicates_in_current_directory(self, full_file_path):
         if os.path.split(full_file_path)[1] in [os.path.split(f)[1] for f in self.trusted_files]:
@@ -253,6 +254,7 @@ def parse_and_execute_cli():
         sys.exit(1)
 
     if args['preset'] == True:
+        # python C:\GitHub\Python\duplicated_photos_remove.py -v -p -r 
         auto_scan_directories(sources = ["C:\\Kornel_Zdjecia\\Camera", "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne", "C:\\Kornel_Zdjecia\\___Movie_Gallery_Gotowe_finalne"], 
                                 destinations = ["C:\\Kornel_Zdjecia\\telefon_tmp"], 
                                 delete_files=args['delete_files'], 
@@ -262,7 +264,7 @@ def parse_and_execute_cli():
         sys.exit(1)
 
     if args['export_sorted_newest'] != None:
-        # python.exe .\duplicated_photos_remove.py -e -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
+        # python.exe C:\GitHub\Python\duplicated_photos_remove.py -e -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
         if (args['source'] != None) and (args['destination'] != None):
             source_path = args['source']
             source = DirectoryStructure(source_path, skip_duplicates=False)
