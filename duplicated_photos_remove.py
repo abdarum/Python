@@ -114,7 +114,7 @@ class DirectoryStructure:
         if full_file_path is None:
             full_file_path = self.root_directory
         result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
-        [self.classify_file(file_path) for file_path in result]
+        [self.classify_file(file_path) for file_path in tqdm.tqdm(result, desc="Scan directory")]
 
     def classify_file_for_export(self, full_file_path):
         if not (self.find_duplicates_in_current_directory(full_file_path) \
@@ -164,7 +164,7 @@ class DirectoryStructure:
 
     def prepare_to_delete_existing_files(self, reference):
         assert isinstance(reference, DirectoryStructure), "reference must be a object of DirectoryStructure class"
-        for trusted in self.trusted_files:
+        for trusted in tqdm.tqdm(self.trusted_files, desc="Prepare to delete duplicates"):
             if os.path.split(trusted)[1] in [os.path.split(f)[1] for f in reference.trusted_files]:
                 self.delete_from_current_directory.append(trusted)
 
@@ -196,8 +196,14 @@ class DirectoryStructure:
 def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose, no_action):
     for d in destinations:
         for s in sources:
+            # Source
+            if verbose == True:
+                print("Directory path: {}".format(s))
             source = DirectoryStructure(s, skip_duplicates=skip_duplicates)
             source.scan_directory()
+            # Destination
+            if verbose == True:
+                print("Directory path: {}".format(d))
             destination = DirectoryStructure(d, skip_duplicates=skip_duplicates)
             destination.scan_directory()
 
