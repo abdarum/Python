@@ -8,6 +8,8 @@ from PIL import Image
 import PIL
 import glob
 import tqdm
+# logging
+import json_logging, logging, datetime
 
 source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source"
 destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source_helper"
@@ -21,6 +23,23 @@ TRUSTED_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG',
                       '.mp4', '.MP4'
                       ]
 IGNORED_EXTENSIONS = ['.txt']
+
+file_datestamp_format = '%Y%m%d_%H%M%S'
+__init_datestamp = datetime.datetime.now().strftime(file_datestamp_format)
+gen_dir_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen", "logs"))
+
+# # logging gear
+json_logging.init_non_web(enable_json=True)
+logger = logging.getLogger("duplicated_photos_remove-logger")
+logger.setLevel(logging.DEBUG)
+# logger.addHandler(logging.StreamHandler(sys.stdout))
+
+log_filename = "dup_photo_rem_log_" + __init_datestamp + ".json"
+log_file_path = os.path.abspath(os.path.join(gen_dir_path, log_filename))
+logger.addHandler(logging.FileHandler(log_file_path))
+print("Log stored at: {}".format(log_file_path))
+
+logger.info("Duplicated photos remove init. Logging timestamp: {}".format(__init_datestamp))
 
 class Duplicates:
     class DuplicateItem:
@@ -47,7 +66,7 @@ class Duplicates:
                 self.list_of_paths.append(path)
 
         def print_duplicate_item(self):
-            print("Name: {}\nPaths".format(self.name))
+            print("Duplicate  - Filename: {}\nPaths".format(self.name))
             pprint.pprint(self.list_of_paths)
             print("")
 
@@ -96,24 +115,29 @@ class DirectoryStructure:
         self.skip_duplicates = skip_duplicates
 
     def classify_file(self, full_file_path):
-        if not (self.find_duplicates_in_current_directory(full_file_path) \
-            and self.skip_duplicates):    
+        if not (self.skip_duplicates and \
+                self.find_duplicates_in_current_directory(full_file_path) ):    
             extension = os.path.splitext(full_file_path)[1]
             if extension in TRUSTED_EXTENSIONS:
                 self.trusted_files.append(full_file_path)
+                logger.info('classify_file - File in TRUSTED_EXTENSIONS - processing file: {}'.format(full_file_path))
             elif extension in IGNORED_EXTENSIONS:
                 self.ignored_files.append(full_file_path)
+                logger.info('classify_file - File in IGNORED_EXTENSIONS - processing file: {}'.format(full_file_path))
             else:
                 self.found_not_processed_files.append(full_file_path)
+                logger.info('classify_file - Extension not recognized - processing file: {}'.format(full_file_path))
         else:
             duplicates = [f for f in self.trusted_files if (os.path.split(f)[1] == os.path.split(full_file_path)[1])]
             for d in duplicates:
                 self.trusted_files.remove(d)
+                logger.info('classify_file - File found as duplicate, file removed from self.trusted_files - processing file: {}'.format(full_file_path))
 
     def scan_directory(self, full_file_path=None):
         if full_file_path is None:
             full_file_path = self.root_directory
         result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
+        logger.info('scan_directory {} - Number of files found {}'.format(full_file_path, len(result)))
         [self.classify_file(file_path) for file_path in tqdm.tqdm(result, desc="Scan directory")]
 
     def classify_file_for_export(self, full_file_path):
@@ -167,22 +191,30 @@ class DirectoryStructure:
         for trusted in tqdm.tqdm(self.trusted_files, desc="Prepare to delete duplicates"):
             if os.path.split(trusted)[1] in [os.path.split(f)[1] for f in reference.trusted_files]:
                 self.delete_from_current_directory.append(trusted)
+                logger.info("prepare_to_delete_existing_files - file will be deleted: {}".format(trusted))
 
     def delete_prepared_files(self):
         for f in self.delete_from_current_directory:
             os.remove(f)
+            logger.info("delete_prepared_files - file was deleted: {}".format(f))
         print("\n\n*************************\n**** DELETE COMPLETE ****\n*************************")
 
 
     def print_warnings(self):
         print("\n\n***********************\n****    WARNINGS   ****\n***********************")
         for f in self.found_not_processed_files:
-            print("Warning: File was not foud:\n{}\n".format(f))
+            log_msg = "Warning: File was not found:\n{}\n".format(f)
+            print(log_msg)
+            json_log = "print_warnings - {}".format(log_msg.replace('\n', ' '))
+            logger.info(json_log)
 
     def print_ignored(self):
         print("\n\n***********************\n****    IGNORED    ****\n***********************")
         for f in self.ignored_files:
-            print("IGNORED: File was ignored:\n{}\n".format(f))
+            log_msg = "IGNORED: File was ignored:\n{}\n".format(f)
+            print(log_msg)
+            json_log = "print_ignored - {}".format(log_msg.replace('\n', ' '))
+            logger.info(json_log)
 
     def print_duplicates(self):
         self.duplicated_files.print_duplicates()
@@ -190,7 +222,10 @@ class DirectoryStructure:
     def print_prepared_to_delete(self):
         print("\n\n***********************\n****    DELETE     ****\n***********************")
         for f in self.delete_from_current_directory:
-            print("DELETE: File will be deleted:\n{}\n".format(f))
+            log_msg = "DELETE: File will be deleted:\n{}\n".format(f)
+            print(log_msg)
+            json_log = "print_prepared_to_delete - {}".format(log_msg.replace('\n', ' '))
+            logger.info(json_log)
 
 
 def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose, no_action):
@@ -241,7 +276,7 @@ def parse_and_execute_cli():
     ap.add_argument("-a", "--accept_duplicates", required=False, action="store_false",
     help="NO skip duplicates, by default duplicated files are skipped")
     ap.add_argument("-r", "--delete_files", required=False, action="store_true",
-    help="delete files existing in source, default: False")
+    help="delete files existing in source from destination dir, default: False")
     ap.add_argument("-n", "--no_action", required=False, action="store_true",
     help="explain what would be deleted, but there is no action in file system, default: False")
     ap.add_argument("-e", "--export_sorted_newest", required=False, action="store_true",
@@ -260,8 +295,9 @@ def parse_and_execute_cli():
 
     if args['preset'] == True:
         # python C:\GitHub\Python\duplicated_photos_remove.py -v -p -r 
-        auto_scan_directories(sources = ["C:\\Kornel_Zdjecia\\Camera", "C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne", "C:\\Kornel_Zdjecia\\___Movie_Gallery_Gotowe_finalne"], 
-                                destinations = ["C:\\Kornel_Zdjecia\\telefon_tmp"], 
+        auto_scan_directories(
+                                sources = ["\\\\networkpc\\image\\Camera", "C:\\image\\Camera"], 
+                                destinations = ["D:\\images"], 
                                 delete_files=args['delete_files'], 
                                 skip_duplicates=args['accept_duplicates'],
                                 verbose=args['verbose'],
