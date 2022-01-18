@@ -24,45 +24,46 @@ bossa_file_path = r'C:\Users\Kornel\Desktop\tmp\Dywidendy\20220104_230700_Dywide
 ######     Classes     ######
 #############################
 
-class DividendItem:
+class DividendCompanyItem:
     dict_val = {}
-    DIVIDEND_DICT_KEY_BOSSA_INSTRUMENT_URL, \
-    DIVIDEND_DICT_KEY_NAME_SHORT, \
-    DIVIDEND_DICT_KEY_NAME_LONG, \
-    DIVIDEND_DICT_KEY_PERCENT, \
-    DIVIDEND_DICT_KEY_NOMINAL, \
-    DIVIDEND_DICT_KEY_SECTOR_GPW, \
-    DIVIDEND_DICT_KEY_SECTOR_NAME, \
-    DIVIDEND_DICT_KEY___COUNTER \
+    
+    DIVIDEND_COMPANY_DICT_KEY_BOSSA_INSTRUMENT_URL, \
+    DIVIDEND_COMPANY_DICT_KEY_NAME_SHORT, \
+    DIVIDEND_COMPANY_DICT_KEY_NAME_LONG, \
+    DIVIDEND_COMPANY_DICT_KEY_PERCENT, \
+    DIVIDEND_COMPANY_DICT_KEY_NOMINAL, \
+    DIVIDEND_COMPANY_DICT_KEY_SECTOR_GPW, \
+    DIVIDEND_COMPANY_DICT_KEY_SECTOR_NAME, \
+    DIVIDEND_COMPANY_DICT_KEY___COUNTER \
     = range(8)
 
     __DICT_KEY = {
-        DIVIDEND_DICT_KEY_BOSSA_INSTRUMENT_URL: 'bossa_instrument_url',
-        DIVIDEND_DICT_KEY_NAME_SHORT: 'name_short',
-        DIVIDEND_DICT_KEY_NAME_LONG: 'name_long',
-        DIVIDEND_DICT_KEY_PERCENT: 'percent',
-        DIVIDEND_DICT_KEY_NOMINAL: 'nominal',
-        DIVIDEND_DICT_KEY_SECTOR_GPW: 'sector_GPW',
-        DIVIDEND_DICT_KEY_SECTOR_NAME: 'sector_name',
+        DIVIDEND_COMPANY_DICT_KEY_BOSSA_INSTRUMENT_URL: 'bossa_instrument_url',
+        DIVIDEND_COMPANY_DICT_KEY_NAME_SHORT: 'name_short',
+        DIVIDEND_COMPANY_DICT_KEY_NAME_LONG: 'name_long',
+        DIVIDEND_COMPANY_DICT_KEY_PERCENT: 'percent',
+        DIVIDEND_COMPANY_DICT_KEY_NOMINAL: 'nominal',
+        DIVIDEND_COMPANY_DICT_KEY_SECTOR_GPW: 'sector_GPW',
+        DIVIDEND_COMPANY_DICT_KEY_SECTOR_NAME: 'sector_name',
         }
 
     __DICT_NAME = {
-        DIVIDEND_DICT_KEY_BOSSA_INSTRUMENT_URL: 'Bossa instrument url',
-        DIVIDEND_DICT_KEY_NAME_SHORT: 'Name short',
-        DIVIDEND_DICT_KEY_NAME_LONG: 'Name long',
-        DIVIDEND_DICT_KEY_PERCENT: 'Percent value',
-        DIVIDEND_DICT_KEY_NOMINAL: 'Nominal value',
-        DIVIDEND_DICT_KEY_SECTOR_GPW: 'Sector GPW',
-        DIVIDEND_DICT_KEY_SECTOR_NAME: 'Sector name',
+        DIVIDEND_COMPANY_DICT_KEY_BOSSA_INSTRUMENT_URL: 'Bossa instrument url',
+        DIVIDEND_COMPANY_DICT_KEY_NAME_SHORT: 'Name short',
+        DIVIDEND_COMPANY_DICT_KEY_NAME_LONG: 'Name long',
+        DIVIDEND_COMPANY_DICT_KEY_PERCENT: 'Percent value',
+        DIVIDEND_COMPANY_DICT_KEY_NOMINAL: 'Nominal value',
+        DIVIDEND_COMPANY_DICT_KEY_SECTOR_GPW: 'Sector GPW',
+        DIVIDEND_COMPANY_DICT_KEY_SECTOR_NAME: 'Sector name',
         }
 
     @staticmethod
     def type_to_key(status: int):
-        return DividendItem.__DICT_KEY[status]
+        return DividendCompanyItem.__DICT_KEY[status]
 
     @staticmethod
     def type_to_name(status: int):
-        return DividendItem.__DICT_NAME[status]
+        return DividendCompanyItem.__DICT_NAME[status]
 
     def dict_raw(self):
         return self.dict_val
@@ -82,49 +83,49 @@ class DividendItem:
     def __str__(self):
         return str(self.dict_key())
 
+    def get_val(self, key):
+        return self.dict_val.get(key)
+
+    def set_val(self, key, val=None):
+        if val is not None:
+            self.dict_val[key] = val
+
     def bossa_instrument_url(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_BOSSA_INSTRUMENT_URL
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_BOSSA_INSTRUMENT_URL
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
 
     def name_short(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_NAME_SHORT
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_NAME_SHORT
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
  
     def name_long(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_NAME_LONG
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_NAME_LONG
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
 
     def percent(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_PERCENT
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_PERCENT
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
 
     def nominal(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_NOMINAL
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_NOMINAL
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
 
     def sector_gpw(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_SECTOR_GPW
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_SECTOR_GPW
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
 
     def sector_name(self, val=None):
-        cur_key = self.DIVIDEND_DICT_KEY_SECTOR_NAME
-        if val is None:
-            return self.dict_val[cur_key]
-        self.dict_val[cur_key] = val
+        cur_key = self.DIVIDEND_COMPANY_DICT_KEY_SECTOR_NAME
+        self.set_val(cur_key, val)
+        return self.get_val(cur_key)
 
-class DividendsContainer:
+class DividendCompaniesContainer:
     items_list = []
 
     def append(self, item):
@@ -158,16 +159,16 @@ class DividendsContainer:
                 instrument_short = link_url.replace(BOSSA_INSTRUMENTS_URL, '')
                 instrument_long = link.text
 
-                dividend_item = DividendItem()
-                dividend_item.bossa_instrument_url(link_url)
-                dividend_item.name_short(instrument_short)
-                dividend_item.name_long(instrument_long)
+                dividend_company_item = DividendCompanyItem()
+                dividend_company_item.bossa_instrument_url(link_url)
+                dividend_company_item.name_short(instrument_short)
+                dividend_company_item.name_long(instrument_long)
 
-                self.append(dividend_item)
-                print(link.get('href'))
+                self.append(dividend_company_item)
 
 #############################
 ###### BUSINESS LOGIC  ######
 #############################
-dividends_list = DividendsContainer()
+dividends_list = DividendCompaniesContainer()
 dividends_list.parse_bossa_dividend_html(bossa_file_path=bossa_file_path)
+print('done')
