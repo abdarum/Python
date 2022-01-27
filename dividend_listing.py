@@ -1,8 +1,11 @@
-import requests
-from bs4 import BeautifulSoup
+import datetime
+import locale
+import os
 import time
+
+from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.webdriver.common.by import By
 
 #############################
 ##### GLOBAL CONSTANTS ######
@@ -22,11 +25,14 @@ class ErrorDef:
     PARSE_STOOQ_OPERATION_TABLE_NOT_DIVIDEND_IN_ROW = 'Error parsing, row in the Stooq operation table. Operation different than dividend'
 
 class DividendItem:
-    def __init__(self, date=None, percent=None, nominal=None, rights_issue=None):
+    def __init__(self, date=None, percent=None, nominal=None, rights_issue=None,
+            share_price_date=None, share_price_nominal=None):
         self.date = date
         self.percent = percent
         self.nominal = nominal
         self.rights_issue = rights_issue
+        self.share_price_date = share_price_date
+        self.share_price_nominal = share_price_nominal
 
 class DividendCompanyItem:
     def __init__(self,
@@ -57,17 +63,32 @@ class DividendCompaniesContainer:
     ###### Class constants ######
     #############################
     BOSSA_INSTRUMENTS_URL = 'https://bossa.pl/notowania/instrumenty/'
-    BIZNESRADAR_INSTRUMENTS_URL = 'https://www.biznesradar.pl/operacje/' # next long name of instrument e.g. ATLANTAPL
-    STOOQ_INSTRUMENTS_URL = 'https://stooq.pl/q/m/?s=' # next short name of instrument e.g. zwc
+    BIZNESRADAR_INSTRUMENTS_URL = 'https://www.biznesradar.pl/operacje/{}' # next long name of instrument e.g. ATLANTAPL
+    STOOQ_INSTRUMENTS_URL = 'https://stooq.pl/q/m/?s={}' # next short name of instrument e.g. zwc
+    STOOQ_INSTRUMENT_DATA_POINTS_URL = 'https://stooq.pl/q/a2/?s={}&i=w&t=c&a=ln&z=3000&l=0&d=1&ch=0&f=0&lt=58&r=0&o=1' # csv with data
     HTTP_TIMEOUT_SECONDS = 5
 
     #############################
     ######  Class methods  ######
     #############################
     def __init__(self):
+        locale.setlocale(locale.LC_ALL, "pl_PL.utf8")
+        # pl_datetime_now = datetime.datetime.now().strftime("%d %B %Y godz: %H:%M:%S")
+        self._init_webdriver()
+
+    def _init_webdriver(self):
         # init web driver
-        binary = FirefoxBinary(r'C:\Program Files\Mozilla Firefox\firefox.exe')
-        self.driver = webdriver.Firefox(firefox_binary=binary)
+        self.script_parent_dir_path = os.path.dirname(os.path.abspath(__file__))
+        self.download_dir_path = os.path.join(self.script_parent_dir_path, 'gen', 'downloads')
+        firefox_profile = webdriver.FirefoxProfile()
+
+        firefox_profile.set_preference("browser.download.folderList",2)
+        firefox_profile.set_preference("browser.download.manager.showWhenStarting", False)
+        firefox_profile.set_preference("browser.download.dir", self.download_dir_path)
+        firefox_profile.set_preference("browser.helperApps.neverAsk.saveToDisk","text/csv")
+
+        self.driver = webdriver.Firefox(firefox_profile=firefox_profile)
+
 
     def append(self, item):
         self.items_list.append(item)
@@ -94,13 +115,27 @@ class DividendCompaniesContainer:
         return soup
 
     def __webdriver_agree_cookies_stood(self):
-        buttons = self.driver.find_elements_by_xpath("//*[contains(text(), 'Zgadzam się')]")
+        buttons = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'Zgadzam się')]")
 
         for btn in buttons:
             btn.click()
             time.sleep(self.HTTP_TIMEOUT_SECONDS)
+            self.driver.refresh()
+            time.sleep(self.HTTP_TIMEOUT_SECONDS)
+    
+    def __webdriver_daily_limit_occured_stood(self):
+        buttons = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'Odblokuj dostęp...')]")
 
-    def parse_stooq_operation_table(self, table_html=None):
+        for btn in buttons:
+            btn.click()
+            # TODO
+            print("WARNING: automatic parsing should be added !!!")
+            time.sleep(self.HTTP_TIMEOUT_SECONDS)
+            self.driver.refresh()
+            time.sleep(self.HTTP_TIMEOUT_SECONDS)
+
+
+    def _parse_stooq_operation_table(self, table_html=None, data_points=None):
         err_method = None
         html_str = table_html
 
@@ -126,7 +161,14 @@ class DividendCompaniesContainer:
                 # parse values - adjust to the schema
                 for key in row_dict.keys():
                     if key == 'Data':
-                        row_dict[key] = row_dict.get(key)
+                        try:
+                            date_str = row_dict.get(key).split(', ')[1]
+                            date_obj = datetime.datetime.strptime(date_str, '%d %b %Y')
+                            
+                            row_dict[key] = date_obj
+                        except:
+                            pass
+                        
                     elif key == 'Zdarzenie':
                         if row_dict.get(key).startswith('Dywidenda '):
                             val_str = row_dict.get(key).replace('Dywidenda ', '').replace('%', '')
@@ -161,26 +203,82 @@ class DividendCompaniesContainer:
                 else:
                     dividends_list.append(dividend_item)
 
+        # TODO
+        # get val from data_points
+        # self.share_price_date = share_price_date
+        # self.share_price_nominal = share_price_nominal
+        # https://stackoverflow.com/questions/66165563/given-a-specific-date-find-the-next-date-in-the-list-using-python
+
         return dividends_list
 
 
+    def parse_stooq_data_points_website(self, short_name=None):
+        data_points_page_url = self.STOOQ_INSTRUMENT_DATA_POINTS_URL.format(short_name)
+        self.driver.get(data_points_page_url)
+        time.sleep(self.HTTP_TIMEOUT_SECONDS)
+        data_points_item = self.driver.find_element(By.ID, 'csv_')
+        data_points_item.click()
+        # TODO  parse csv saved in self.download_dir_path - ATP_w.csv = '{}_w.csv'.format(short_name)
+
+        return None
+
     def parse_stooq_operations_website(self, short_name=None):
-        url = self.STOOQ_INSTRUMENTS_URL + short_name
-        self.driver.get(url)
+        dividend_url = self.STOOQ_INSTRUMENTS_URL.format(short_name)
+        self.driver.get(dividend_url)
         time.sleep(self.HTTP_TIMEOUT_SECONDS)
         self.__webdriver_agree_cookies_stood()
+        self.__webdriver_daily_limit_occured_stood()
 
-        # fth1
-        table_item = self.driver.find_element_by_id('fth1')
-        # table
+        # Dividend list table - fth1
+        table_item = self.driver.find_element(By.ID, 'fth1')
+        dividend_table_html = table_item.get_attribute('innerHTML')
 
-        table_html = table_item.get_attribute('innerHTML')
-        dividends_list = self.parse_stooq_operation_table(table_html)
+        data_points = self.parse_stooq_data_points_website(short_name)
+
+        dividends_list = self._parse_stooq_operation_table(dividend_table_html, data_points)
 
         ret_dict = {}
         ret_dict['dividends_list'] = dividends_list
 
         return ret_dict
+
+
+    def _parse_biznesradar_profile_summary_table(self, table_html=None):
+        html_str = table_html
+
+        table = BeautifulSoup(html_str, 'html.parser')
+
+        ret_val_dict = {'sector_gpw': None, 'sector_name': None}
+        for row_idx, row in enumerate(table.find_all('tr')):
+            desc = row.find_all('th')
+            val = row.find_all('td')
+            if len(desc) > 0:
+                desc = desc[0]
+            if len(val) > 0:
+                val = val[0]
+            if desc.text == 'Sektor:':
+                ret_val_dict['sector_gpw'] = val.text
+            if desc.text == 'Branża:':
+                ret_val_dict['sector_name'] = val.text
+
+        for key in ret_val_dict.keys():
+            ret_val_dict[key] = ret_val_dict.get(key).replace('\n', '')
+
+        return ret_val_dict
+
+    def parse_biznesradar_operations_website(self, long_name=None):
+        url = self.BIZNESRADAR_INSTRUMENTS_URL.format(long_name)
+        self.driver.get(url)
+        time.sleep(self.HTTP_TIMEOUT_SECONDS)
+
+        # # <table class="profileSummary">
+        table_item = self.driver.find_element(By.CLASS_NAME, 'profileSummary')
+
+        table_html = table_item.get_attribute('innerHTML')
+        ret_val_dict = self._parse_biznesradar_profile_summary_table(table_html)
+
+        return ret_val_dict
+
 
     def parse_bossa_dividend_html(self, bossa_file_path=None, bossa_url=None):
         assert bossa_file_path or bossa_url, 'Source wasn\'t set correctly'
@@ -198,12 +296,16 @@ class DividendCompaniesContainer:
                 instrument_long = link.text
                 stooq_content = self.parse_stooq_operations_website(instrument_short)
                 dividends_list = stooq_content.get('dividends_list')
-
+                biznesradar_content = self.parse_biznesradar_operations_website(instrument_long)
+                sector_gpw = biznesradar_content.get('sector_gpw')
+                sector_name = biznesradar_content.get('sector_name')
                 dividend_company_item = DividendCompanyItem(
                     bossa_instrument_url = link_url,
                     name_short = instrument_short,
-                    name_long = instrument_long)
-
+                    name_long = instrument_long,
+                    sector_gpw=sector_gpw,
+                    sector_name=sector_name,
+                    dividends_list=dividends_list)
 
                 self.append(dividend_company_item)
                 print('test')
@@ -215,3 +317,4 @@ dividends_list = DividendCompaniesContainer()
 dividends_list.parse_bossa_dividend_html(bossa_file_path=bossa_file_path)
 print('done')
 # https://www.bankier.pl/wiadomosc/Inwestowanie-dywidendowe-Poradnik-dla-poczatkujacych-7601780.html
+
