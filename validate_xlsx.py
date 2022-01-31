@@ -1,7 +1,14 @@
+# reqirements
+# pip3 install tkinter
+# pip3 install pytk
+# pip3 install pandas
+# pip3 install openpyxl
+
 import os
 #  pip install openpyxl
 import pandas as pd
 # pip install tk
+# tk inter instalation embedded version - https://stackoverflow.com/a/44169516/7862117
 import tkinter as tk
 from tkinter import filedialog
 
