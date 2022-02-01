@@ -1,7 +1,9 @@
 import datetime
+import json
 import locale
 import logging
 import os
+import pickle
 import time
 
 import json_logging  # logging
@@ -24,7 +26,7 @@ __init_datestamp = datetime.datetime.now().strftime(file_datestamp_format)
 gen_logs_dir_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "gen", "logs"))
 
 # # logging gear
-# json_logging.init_non_web(enable_json=True)
+json_logging.init_non_web(enable_json=True)
 logger = logging.getLogger("duplicated_photos_remove-logger")
 logger.setLevel(logging.DEBUG)
 # logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -35,6 +37,15 @@ logger.addHandler(logging.FileHandler(log_file_path))
 
 logger.info("Dividend listing init. Logging timestamp: {}".format(__init_datestamp))
 print("Log stored at: {}".format(log_file_path))
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    if isinstance(obj, DividendItem):
+        return obj.__dict__
+    raise TypeError ("Type %s not serializable" % type(obj))
 
 #############################
 ######     Classes     ######
@@ -56,6 +67,9 @@ class DividendItem:
 
     def __str__(self):
         return str(self.__dict__)
+
+    def json(self):
+        return json.dumps(self.__dict__, default=json_serial)
 
 class DividendCompanyItem:
     def __init__(self,
@@ -80,8 +94,11 @@ class DividendCompanyItem:
     def __str__(self):
         return str(self.__dict__)
 
+    def json(self):
+        return json.dumps(self.__dict__, default=json_serial)
+
 class DividendCompaniesContainer:
-    items_list = []
+    companies_items_dict = {}
 
     #############################
     ###### Class constants ######
@@ -91,6 +108,9 @@ class DividendCompaniesContainer:
     STOOQ_INSTRUMENTS_URL = 'https://stooq.pl/q/m/?s={}' # next short name of instrument e.g. zwc
     STOOQ_INSTRUMENT_DATA_POINTS_URL = 'https://stooq.pl/q/a2/?s={}&i=w&t=c&a=ln&z=3000&l=0&d=1&ch=0&f=0&lt=58&r=0&o=1' # csv with data
     HTTP_TIMEOUT_SECONDS = 5
+    # store files constants
+    STORE_CURRENT_SETTINGS_FILENAME = 'curr_settings_dividend_listing'
+    STORE_FILE_EXTENSION = '.pickle'
 
     #############################
     ######  Class methods  ######
@@ -101,6 +121,11 @@ class DividendCompaniesContainer:
         logger.info("Set locale to {}".format(locale.getlocale()))
         # pl_datetime_now = datetime.datetime.now().strftime("%d %B %Y godz: %H:%M:%S")
         self._init_webdriver()
+        self.dumps_dir_path = os.path.abspath(os.path.join(self.download_dir_path, os.pardir, 'dumps'))
+        self.dump_restore_configs()
+
+    def json(self):
+        return json.dumps(self.__dict__)
 
     def _init_webdriver(self):
         # init web driver
@@ -116,10 +141,77 @@ class DividendCompaniesContainer:
         self.driver = webdriver.Firefox(firefox_profile=firefox_profile)
         logger.info("Firefox selenium webdriver init")
 
+    # Store settings 
+    def _dump_prepare_dict_to_store(self):
+        dict_to_return = dict()
+        dict_to_return["companies_items_dict"] = self.companies_items_dict
+        return dict_to_return
 
-    def append(self, item):
-        self.items_list.append(item)
-        logger.info("Add Dividend Company {} to items_list".format(item))
+    def _dump_restore_from_dict(self, received_dict):
+        try:
+            self.companies_items_dict.update(received_dict.get("companies_items_dict"))
+        except:
+            logger.error("Dump restore failed")
+            
+
+    def _dump_get_summary_dump_name_filename(self):
+        now = datetime.datetime.now()
+        time_format = "%Y%m%d_%H%M%S_"
+        time_str = now.strftime(time_format)
+        filename = "{}{}{}".format(time_str, self.STORE_CURRENT_SETTINGS_FILENAME, self.STORE_FILE_EXTENSION)
+        return filename
+
+    def _dump_get_filename_to_store(self):
+        filename = "{}{}".format(self.STORE_CURRENT_SETTINGS_FILENAME, self.STORE_FILE_EXTENSION)
+        return filename
+
+    def _dump_get_filename_to_restore(self):
+        return self._dump_get_filename_to_store()
+
+    def _dump_store_configs_settings(self, filename_of_pickle_file):
+        dict_to_pickle = self._dump_prepare_dict_to_store()
+        path_to_pickle_file = os.path.join(self.dumps_dir_path, filename_of_pickle_file)
+        logger.info("Store objects: {} to current working file {}".format(dict_to_pickle.keys(), path_to_pickle_file))
+
+        path_to_pickle_dir = os.path.dirname(path_to_pickle_file)
+        os.makedirs(path_to_pickle_dir, exist_ok=True)
+        db_file = open(path_to_pickle_file, 'wb')
+        pickle.dump(dict_to_pickle, db_file)
+        db_file.close()
+
+    def _dump_restore_configs_settings(self, filename_of_pickle_file):
+        path_to_pickle_file = os.path.join(self.dumps_dir_path, filename_of_pickle_file)
+        if os.path.isfile(path_to_pickle_file):
+            db_file = open(path_to_pickle_file, 'rb')
+            dict_from_pickle = pickle.load(db_file)
+            logger.info("Restore objects: {} from current working file {}".format(dict_from_pickle.keys(), path_to_pickle_file))
+            self._dump_restore_from_dict(dict_from_pickle)
+            db_file.close()
+
+    def dump_store_configs_curr(self):
+        filename_of_pickle_file = self._dump_get_filename_to_store()
+        self._dump_store_configs_settings(filename_of_pickle_file)
+
+    def dump_store_configs(self):
+        filename_of_pickle_file = self._dump_get_summary_dump_name_filename()
+        self._dump_store_configs_settings(filename_of_pickle_file)
+
+    def dump_restore_configs(self):
+        filename_of_pickle_file = self._dump_get_filename_to_restore()
+        self._dump_restore_configs_settings(filename_of_pickle_file)
+
+    def company_add(self, item):
+        key = item.name_short
+        curr_val_for_key = self.companies_items_dict.get(key)
+        if curr_val_for_key is None:
+            self.companies_items_dict[key] = item
+            logger.info("Add Dividend Company {} to items_list".format(item))
+            self.dump_store_configs_curr()
+        else:
+            raise ValueError('Selected key {} exist in dataset'.format(key))
+
+    def count_companies(self):
+        return len(self.companies_items_dict.keys())
 
     def __get_soup_from_file(self, file_path):
         with open(file_path, 'r') as file:
@@ -309,6 +401,8 @@ class DividendCompaniesContainer:
 
         return ret_val_dict
 
+    def bossa_dividend_list_prepared(self):
+        return self.count_companies() > 0
 
     def parse_bossa_dividend_html(self, bossa_file_path=None, bossa_url=None):
         assert bossa_file_path or bossa_url, 'Source wasn\'t set correctly'
@@ -329,12 +423,14 @@ class DividendCompaniesContainer:
                     bossa_instrument_url = dividend_company_item,
                     name_short = instrument_short,
                     name_long = instrument_long)
-                self.append(dividend_company_item)
+                self.company_add(dividend_company_item)
 
+        self.dump_store_configs()
         print('test')
 
     def update_companies_list(self):
-        for item in self.items_list:
+        for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+            item = self.companies_items_dict[item_key]
             # dividends_list
             if len(item.dividends_list) == 0:
                 stooq_content = self.parse_stooq_operations_website(item.name_short)
@@ -351,17 +447,21 @@ class DividendCompaniesContainer:
                 if item.sector_name is None:
                     item.sector_name=sector_name
 
-
+            logger.info("Update company item {} with id {}".format(item, item_idx))
+            self.dump_store_configs_curr()
             print('test')
 
 
 #############################
 ###### BUSINESS LOGIC  ######
 #############################
-dividends_list = DividendCompaniesContainer()
-dividends_list.parse_bossa_dividend_html(bossa_url=bossa_url)
-# dividends_list.parse_bossa_dividend_html(bossa_file_path=bossa_file_path)
-dividends_list.update_companies_list()
-print('done')
+if __name__=='__main__':
+    dividends_list = DividendCompaniesContainer()
+    if not dividends_list.bossa_dividend_list_prepared():
+        dividends_list.parse_bossa_dividend_html(bossa_url=bossa_url)
+        # dividends_list.parse_bossa_dividend_html(bossa_file_path=bossa_file_path)
+    dividends_list.update_companies_list()
+    dividends_list.dump_store_configs()
+    print('done')
 # https://www.bankier.pl/wiadomosc/Inwestowanie-dywidendowe-Poradnik-dla-poczatkujacych-7601780.html
 
