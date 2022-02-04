@@ -8,6 +8,7 @@ import time
 
 import json_logging  # logging
 from bs4 import BeautifulSoup
+from pandas_datareader import data as pdr
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
@@ -55,13 +56,12 @@ class ErrorDef:
 
 class DividendItem:
     def __init__(self, date=None, percent=None, nominal=None, rights_issue=None,
-            share_price_date=None, share_price_nominal=None):
+            close_share_price_nominal=None):
         self.date = date
         self.percent = percent
         self.nominal = nominal
         self.rights_issue = rights_issue
-        self.share_price_date = share_price_date
-        self.share_price_nominal = share_price_nominal
+        self.close_share_price_nominal = close_share_price_nominal
 
         logger.info("DividendItem created: {}".format(str(self)))
 
@@ -76,12 +76,16 @@ class DividendCompanyItem:
             bossa_instrument_url=None,
             name_short=None,
             name_long=None,
+            isin_tag=None,
+            ipo_date=None,
             sector_gpw=None,
             sector_name=None,
             dividends_list=None):
         self.bossa_instrument_url = bossa_instrument_url
         self.name_short = name_short
         self.name_long = name_long
+        self.isin_tag = isin_tag
+        self.ipo_date = ipo_date 
         self.sector_gpw = sector_gpw
         self.sector_name = sector_name
         self.dividends_list = []
@@ -106,7 +110,8 @@ class DividendCompaniesContainer:
     BOSSA_INSTRUMENTS_URL = '/notowania/instrumenty/'
     BIZNESRADAR_INSTRUMENTS_URL = 'https://www.biznesradar.pl/operacje/{}' # next long name of instrument e.g. ATLANTAPL
     STOOQ_INSTRUMENTS_URL = 'https://stooq.pl/q/m/?s={}' # next short name of instrument e.g. zwc
-    STOOQ_INSTRUMENT_DATA_POINTS_URL = 'https://stooq.pl/q/a2/?s={}&i=w&t=c&a=ln&z=3000&l=0&d=1&ch=0&f=0&lt=58&r=0&o=1' # csv with data
+    STOOQ_SHARE_PRICE_VALUE_COUNTRY_SUFFIX = '.PL'
+    STOOQ_SHARE_PRICE_VALUE_TIME_FORMAT = '%Y-%m-%d'
     HTTP_TIMEOUT_SECONDS = 5
     # store files constants
     STORE_CURRENT_SETTINGS_FILENAME = 'curr_settings_dividend_listing'
@@ -254,7 +259,7 @@ class DividendCompaniesContainer:
             time.sleep(self.HTTP_TIMEOUT_SECONDS)
 
 
-    def _parse_stooq_operation_table(self, table_html=None, data_points=None):
+    def _parse_stooq_operation_table(self, table_html=None):
         err_method = None
         html_str = table_html
 
@@ -322,25 +327,7 @@ class DividendCompaniesContainer:
                 else:
                     dividends_list.append(dividend_item)
 
-        # TODO
-        # get val from data_points
-        # self.share_price_date = share_price_date
-        # self.share_price_nominal = share_price_nominal
-        # https://stackoverflow.com/questions/66165563/given-a-specific-date-find-the-next-date-in-the-list-using-python
-
         return dividends_list
-
-
-    def parse_stooq_data_points_website(self, short_name=None):
-        data_points_page_url = self.STOOQ_INSTRUMENT_DATA_POINTS_URL.format(short_name)
-        logger.info("Download and parse data points collected form {}".format(data_points_page_url))
-        self.driver.get(data_points_page_url)
-        time.sleep(self.HTTP_TIMEOUT_SECONDS)
-        data_points_item = self.driver.find_element(By.ID, 'csv_')
-        data_points_item.click()
-        # TODO  parse csv saved in self.download_dir_path - ATP_w.csv = '{}_w.csv'.format(short_name)
-
-        return None
 
     def parse_stooq_operations_website(self, short_name=None):
         dividend_url = self.STOOQ_INSTRUMENTS_URL.format(short_name)
@@ -354,9 +341,7 @@ class DividendCompaniesContainer:
         table_item = self.driver.find_element(By.ID, 'fth1')
         dividend_table_html = table_item.get_attribute('innerHTML')
 
-        data_points = self.parse_stooq_data_points_website(short_name)
-
-        dividends_list = self._parse_stooq_operation_table(dividend_table_html, data_points)
+        dividends_list = self._parse_stooq_operation_table(dividend_table_html)
 
         ret_dict = {}
         ret_dict['dividends_list'] = dividends_list
@@ -401,6 +386,20 @@ class DividendCompaniesContainer:
 
         return ret_val_dict
 
+    def get_close_share_price_nominal(self, name_short, date):
+        # query_date_str should be in format '2002-07-02'
+        query_date_str = date.strftime(self.STOOQ_SHARE_PRICE_VALUE_TIME_FORMAT)
+        query_name_short = name_short
+        if not query_name_short.endswith(self.STOOQ_SHARE_PRICE_VALUE_COUNTRY_SUFFIX):
+            query_name_short += self.STOOQ_SHARE_PRICE_VALUE_COUNTRY_SUFFIX
+        df = pdr.DataReader(query_name_short, "stooq", query_date_str, query_date_str)
+        val = None
+        try:
+            val = df.iloc[0]['Close']
+        except:
+            return None
+        return val
+
     def bossa_dividend_list_prepared(self):
         return self.count_companies() > 0
 
@@ -435,6 +434,8 @@ class DividendCompaniesContainer:
             if len(item.dividends_list) == 0:
                 stooq_content = self.parse_stooq_operations_website(item.name_short)
                 dividends_list = stooq_content.get('dividends_list')
+                for divid_val_item in dividends_list:
+                    divid_val_item.close_share_price_nominal = self.get_close_share_price_nominal(item.name_short, divid_val_item.date)
                 item.dividends_list.extend(dividends_list)
             
             # biznesradar
