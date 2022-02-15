@@ -268,7 +268,8 @@ class StooqWebdriver:
 class BiznesradarWebdriver:
     BIZNESRADAR_INSTRUMENTS_URL = 'https://www.biznesradar.pl/operacje/{}' # next long name of instrument e.g. ATLANTAPL
     IPO_DATE_FORMAT = '%d.%m.%Y'
-    
+    update_fields_supported = ['sector_gpw', 'sector_name', 'isin_tag', 'ipo_date', ]
+
     def __init__(self, base_webdriver):
         self.base_webdriver = base_webdriver
 
@@ -320,6 +321,7 @@ class BiznesradarWebdriver:
 
         return ret_val_dict
 
+
 class BossaWebdriver:
     URL_INSTRUMENTS_SUFFIX = '/notowania/instrumenty/'
     URL_INSTRUMENTS_PREFIX = 'https://bossa.pl'
@@ -353,6 +355,67 @@ class BossaWebdriver:
 
         return dividend_ret_list
 
+
+class NotowaniaPulsBiznesuWebdriver:
+    URL_INSTRUMENT_DETAILS = 'https://notowania.pb.pl/instrument/{}/informacje-spolka'
+    update_fields_supported = ['eur_class_of_activity', 'description_of_activity']
+
+    def __init__(self, base_webdriver):
+        self.base_webdriver = base_webdriver
+
+    def parse_operations_website(self, isin_tag=None):
+        url = self.URL_INSTRUMENT_DETAILS.format(isin_tag)
+        logger.info("Parse sector from NotowaniaPulsBiznesu website {}".format(url))
+        self.base_webdriver.get(url)
+        self.base_webdriver.sleep()
+
+        basic_data_table_item = self.base_webdriver.find_element(By.ID, 'boxBasicData')
+        basic_data_table_html = basic_data_table_item.get_attribute('innerHTML')
+
+        ret_val_dict = self.parse_basic_data_table(basic_data_table_html)
+
+        description_of_activity_item = self.base_webdriver.find_element(By.ID, 'boxDesc')
+        description_of_activity_html = description_of_activity_item.get_attribute('innerHTML')
+        ret_val_dict.update(self.parse_description_table(description_of_activity_html))
+
+        return ret_val_dict
+
+    def parse_basic_data_table(self, table_html=None):
+        html_str = table_html
+
+        table = BeautifulSoup(html_str, 'html.parser').find(class_="boxContent boxTable")
+
+        ret_val_dict = {'eur_class_of_activity': None}
+        for row_idx, row in enumerate(table.find_all('tr')):
+            desc = row.find_all('td')[0].text
+            val = row.find_all('td')[1].text
+            if desc == 'EKD:' and ret_val_dict.get('eur_class_of_activity') is None:
+                ret_val_dict['eur_class_of_activity'] = val
+
+        for key in ret_val_dict.keys():
+            if isinstance(ret_val_dict.get(key), str):
+                ret_val_dict[key] = ret_val_dict.get(key).replace('\n', '')
+
+        return ret_val_dict
+
+
+    def parse_description_table(self, html_str=None):
+        soup = BeautifulSoup(html_str, 'html.parser')
+
+        ret_val_dict = {'description_of_activity': None}
+
+        content = soup.find(class_="boxContent")
+        val = content.text
+
+        ret_val_dict['description_of_activity'] = val
+
+        for key in ret_val_dict.keys():
+            if isinstance(ret_val_dict.get(key), str):
+                ret_val_dict[key] = ret_val_dict.get(key).replace('\n', '')
+
+        return ret_val_dict
+
+
 class DividendItem:
     def __init__(self, date=None, percent=None, nominal=None, rights_issue=None,
             close_share_price_nominal=None):
@@ -379,6 +442,8 @@ class DividendCompanyItem:
             ipo_date=None,
             sector_gpw=None,
             sector_name=None,
+            eur_class_of_activity=None,
+            description_of_activity=None,
             dividends_list=None):
         self.bossa_instrument_url = bossa_instrument_url
         self.name_short = name_short
@@ -387,6 +452,8 @@ class DividendCompanyItem:
         self.ipo_date = ipo_date 
         self.sector_gpw = sector_gpw
         self.sector_name = sector_name
+        self.eur_class_of_activity = eur_class_of_activity
+        self.description_of_activity = description_of_activity
         self.dividends_list = []
         self.update_dividends_list(dividends_list)
 
@@ -401,6 +468,8 @@ class DividendCompanyItem:
         sector_gpw = update_dict.get('sector_gpw')
         sector_name = update_dict.get('sector_name')
         dividends_list = update_dict.get('dividends_list')
+        eur_class_of_activity = update_dict.get('eur_class_of_activity')
+        description_of_activity = update_dict.get('description_of_activity')
 
 
         if bossa_instrument_url != None:        
@@ -417,6 +486,10 @@ class DividendCompanyItem:
             self.sector_gpw = sector_gpw
         if sector_name != None:        
             self.sector_name = sector_name
+        if eur_class_of_activity != None:        
+            self.eur_class_of_activity = eur_class_of_activity
+        if description_of_activity != None:        
+            self.description_of_activity = description_of_activity
 
         if dividends_list != None:
             self.update_dividends_list(dividends_list)
@@ -436,6 +509,16 @@ class DividendCompanyItem:
 
     def dividends_list_needs_update(self):
         return len(self.dividends_list) == 0
+
+    def fields_needs_update(self, keys_list):
+        assert isinstance(keys_list, list)
+
+        values_list = []
+        for key in keys_list:
+            values_list.append(self.__dict__.get(key))
+
+        return None in values_list
+
 class DividendCompaniesContainer:
     companies_items_dict = {}
 
@@ -455,6 +538,8 @@ class DividendCompaniesContainer:
         self.stooq_webdriver = StooqWebdriver(self.base_webdriver)
         self.biznesradar_webdriver = BiznesradarWebdriver(self.base_webdriver)
         self.bossa_webdriver = BossaWebdriver(self.base_webdriver)
+        self.notowania_pb_webdriver = NotowaniaPulsBiznesuWebdriver(self.base_webdriver)
+
         logger.info("DividendCompaniesContainer init")
         locale.setlocale(locale.LC_ALL, "pl_PL.utf8")
         logger.info("Set locale to {}".format(locale.getlocale()))
@@ -544,15 +629,19 @@ class DividendCompaniesContainer:
     def update_companies_list(self):
         for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
             item = self.companies_items_dict[item_key]
-            # dividends_list
+            # Stooq dividends list
             if item.dividends_list_needs_update():
                 stooq_content = self.stooq_webdriver.parse_operations_website(item.name_short)
                 item.update(stooq_content)
             
             # biznesradar
-            if None in [item.sector_gpw, item.sector_name]:
+            if item.fields_needs_update(self.biznesradar_webdriver.update_fields_supported):
                 biznesradar_content = self.biznesradar_webdriver.parse_operations_website(item.name_long)
                 item.update(biznesradar_content)
+
+            if item.fields_needs_update(self.notowania_pb_webdriver.update_fields_supported):
+                notowania_pb_content = self.notowania_pb_webdriver.parse_operations_website(item.isin_tag)
+                item.update(notowania_pb_content)
 
             logger.info("Update company item {} with id {}".format(item, item_idx))
             self.dump_store_configs_curr()
