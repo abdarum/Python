@@ -7,15 +7,17 @@ import pickle
 import time
 
 import json_logging  # logging
+import stringcase
+import tqdm
 from bs4 import BeautifulSoup
 from pandas_datareader import data as pdr
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
 #############################
 ######  User Settings  ######
 #############################
-bossa_url = 'https://bossa.pl/analizy/dywidendy'
 bossa_file_path = r'C:\Users\Kornel\Desktop\tmp\Dywidendy\20220104_230700_Dywidendy _ Dom Maklerski Banku Ochrony Środowiska.html'
 
 #############################
@@ -55,10 +57,16 @@ class ErrorDef:
     PARSE_STOOQ_OPERATION_TABLE_NOT_DIVIDEND_IN_ROW = 'Error parsing, row in the Stooq operation table. Operation different than dividend'
     PARSE_DATE_FAILED = 'Error parsing, Parse date failed'
 
+class SupportLevelDef:
+    ALL = 'all'
+    MANDATORY = 'mandatory'
+    OPTIONAL = 'optional'
+
 class ForceDef:
     FORCE_DISABLED = 'Force disabled'
     COMPANY_ADD_OVERWRITE_EXISTING_COMPANY = 'Company add - overwrite existing company'
     FETCH_BOSSA_COMPANIES_LIST = 'Fetch bossa companies list'
+    DELETE_COMPANY_ITEM_FROM_COMPANIES_LIST = 'Delete company item from companies list'
 
     @staticmethod
     def is_force_active(cur_permission, goal_permission):
@@ -78,7 +86,7 @@ class ForceDef:
 
 
 class BaseWebdriver:
-    HTTP_TIMEOUT_SECONDS = 5
+    HTTP_TIMEOUT_SECONDS = 20
 
     def __init__(self):
         # init web driver
@@ -97,7 +105,7 @@ class BaseWebdriver:
     def get_soup_from_url(self, url):
         logger.info("Get soup from url website {}".format(url))
         self.driver.get(url)
-        self.base_webdriver.sleep()
+        self.sleep()
         html_str = self.driver.page_source
         
         soup = BeautifulSoup(html_str, 'html.parser')
@@ -120,11 +128,21 @@ class BaseWebdriver:
         self.driver.refresh()
 
     def find_element(self, find_by, find_content):
-        return self.driver.find_element(find_by, find_content)
+        try:
+            return self.driver.find_element(find_by, find_content)
+        except NoSuchElementException:
+            logger.error('Element has not been found')
+            return ''
+
+    def get_html_of_element(self, find_by, find_content):
+        try:
+            return self.find_element(find_by, find_content).get_attribute('innerHTML')
+        except AttributeError:
+            logger.error('Object has no property innerHTML')
+            return ''
 
     def find_elements(self, find_by, find_content):
         return self.driver.find_elements(find_by, find_content)
-    
 
 class StooqWebdriver:
     URL_INSTRUMENT = 'https://stooq.pl/q/m/?s={}' # next short name of instrument e.g. zwc
@@ -223,13 +241,17 @@ class StooqWebdriver:
                     )
                 
                 if err_row:
-                    print('Parsing error, dividend_item skipped. Dividend item: {}. Error {}'.format(dividend_item, err_row))
+                    logger.error('Parsing error, dividend_item skipped. Dividend item: {}. Error {}'.format(dividend_item, err_row))
                 else:
                     dividends_list.append(dividend_item)
 
         return dividends_list
 
     def parse_operations_website(self, short_name=None):
+        if short_name is None:
+            # page can not be parsed
+            return {}
+
         dividend_url = self.URL_INSTRUMENT.format(short_name)
         logger.info("Parse stooq operations website {}".format(dividend_url))
         self.base_webdriver.get(dividend_url)
@@ -238,8 +260,7 @@ class StooqWebdriver:
         self.skip_daily_limit_occured_stooq()
 
         # Dividend list table - fth1
-        table_item = self.base_webdriver.find_element(By.ID, 'fth1')
-        dividend_table_html = table_item.get_attribute('innerHTML')
+        dividend_table_html = self.base_webdriver.get_html_of_element(By.ID, 'fth1')
 
         dividends_list = self.parse_operation_table(dividend_table_html)
         for divid_val_item in dividends_list:
@@ -268,7 +289,6 @@ class StooqWebdriver:
 class BiznesradarWebdriver:
     BIZNESRADAR_INSTRUMENTS_URL = 'https://www.biznesradar.pl/operacje/{}' # next long name of instrument e.g. ATLANTAPL
     IPO_DATE_FORMAT = '%d.%m.%Y'
-    update_fields_supported = ['sector_gpw', 'sector_name', 'isin_tag', 'ipo_date', ]
 
     def __init__(self, base_webdriver):
         self.base_webdriver = base_webdriver
@@ -308,30 +328,45 @@ class BiznesradarWebdriver:
         return ret_val_dict
 
     def parse_operations_website(self, long_name=None):
+        if long_name is None:
+            # page can not be parsed
+            return {}
         url = self.BIZNESRADAR_INSTRUMENTS_URL.format(long_name)
         logger.info("Parse sector from BiznesRadar website {}".format(url))
         self.base_webdriver.get(url)
         self.base_webdriver.sleep()
 
         # # <table class="profileSummary">
-        table_item = self.base_webdriver.find_element(By.CLASS_NAME, 'profileSummary')
-
-        table_html = table_item.get_attribute('innerHTML')
+        table_html = self.base_webdriver.get_html_of_element(By.CLASS_NAME, 'profileSummary')
         ret_val_dict = self.parse_profile_summary_table(table_html)
 
         return ret_val_dict
+
+    def update_fields_supported(self, support_level=None):
+        if support_level is None:
+            support_level = SupportLevelDef.MANDATORY
+        update_fields_supported = []
+        mandatory = ['sector_gpw', 'sector_name', 'isin_tag', ]
+        optional = ['ipo_date', ]
+        if support_level in [SupportLevelDef.ALL, SupportLevelDef.MANDATORY]:
+            update_fields_supported.extend(mandatory)
+        if support_level in [SupportLevelDef.ALL, SupportLevelDef.OPTIONAL]:
+            update_fields_supported.extend(optional)
+        return update_fields_supported
 
 
 class BossaWebdriver:
     URL_INSTRUMENTS_SUFFIX = '/notowania/instrumenty/'
     URL_INSTRUMENTS_PREFIX = 'https://bossa.pl'
+    URL_ANALYSE_DIVIDS = 'https://bossa.pl/analizy/dywidendy'
+
     
     def __init__(self, base_webdriver):
         self.base_webdriver = base_webdriver
 
 
     def parse_dividend_companies_list(self, bossa_file_path=None):
-        bossa_url = '{}{}'.format(self.URL_INSTRUMENTS_PREFIX, self.URL_INSTRUMENTS_SUFFIX)
+        bossa_url = '{}'.format(self.URL_ANALYSE_DIVIDS)
         assert bossa_file_path or bossa_url, 'Source wasn\'t set correctly'
 
         soup = None
@@ -358,24 +393,25 @@ class BossaWebdriver:
 
 class NotowaniaPulsBiznesuWebdriver:
     URL_INSTRUMENT_DETAILS = 'https://notowania.pb.pl/instrument/{}/informacje-spolka'
-    update_fields_supported = ['eur_class_of_activity', 'description_of_activity']
 
     def __init__(self, base_webdriver):
         self.base_webdriver = base_webdriver
 
     def parse_operations_website(self, isin_tag=None):
+        if isin_tag is None:
+            # page can not be parsed
+            return {}
+
         url = self.URL_INSTRUMENT_DETAILS.format(isin_tag)
         logger.info("Parse sector from NotowaniaPulsBiznesu website {}".format(url))
         self.base_webdriver.get(url)
         self.base_webdriver.sleep()
 
-        basic_data_table_item = self.base_webdriver.find_element(By.ID, 'boxBasicData')
-        basic_data_table_html = basic_data_table_item.get_attribute('innerHTML')
+        basic_data_table_html = self.base_webdriver.get_html_of_element(By.ID, 'boxBasicData')
 
         ret_val_dict = self.parse_basic_data_table(basic_data_table_html)
 
-        description_of_activity_item = self.base_webdriver.find_element(By.ID, 'boxDesc')
-        description_of_activity_html = description_of_activity_item.get_attribute('innerHTML')
+        description_of_activity_html = self.base_webdriver.get_html_of_element(By.ID, 'boxDesc')
         ret_val_dict.update(self.parse_description_table(description_of_activity_html))
 
         return ret_val_dict
@@ -414,6 +450,18 @@ class NotowaniaPulsBiznesuWebdriver:
                 ret_val_dict[key] = ret_val_dict.get(key).replace('\n', '')
 
         return ret_val_dict
+
+    def update_fields_supported(self, support_level=None):
+        if support_level is None:
+            support_level = SupportLevelDef.MANDATORY
+        update_fields_supported = []
+        mandatory = ['eur_class_of_activity', 'description_of_activity']
+        optional = [ ]
+        if support_level in [SupportLevelDef.ALL, SupportLevelDef.MANDATORY]:
+            update_fields_supported.extend(mandatory)
+        if support_level in [SupportLevelDef.ALL, SupportLevelDef.OPTIONAL]:
+            update_fields_supported.extend(optional)
+        return update_fields_supported
 
 
 class DividendItem:
@@ -533,7 +581,8 @@ class DividendCompaniesContainer:
     ######  Class methods  ######
     #############################
     def __init__(self):
-        self.force_permissions = ForceDef.FORCE_DISABLED
+        self.force_permissions = [ForceDef.FETCH_BOSSA_COMPANIES_LIST]
+        # self.force_permissions.append(ForceDef.DELETE_COMPANY_ITEM_FROM_COMPANIES_LIST)
         self.base_webdriver = BaseWebdriver()
         self.stooq_webdriver = StooqWebdriver(self.base_webdriver)
         self.biznesradar_webdriver = BiznesradarWebdriver(self.base_webdriver)
@@ -563,11 +612,15 @@ class DividendCompaniesContainer:
             logger.error("Dump restore failed")
             
 
-    def _dump_get_summary_dump_name_filename(self):
+    def _dump_get_summary_dump_name_filename(self, additional_desc=None):
         now = datetime.datetime.now()
         time_format = "%Y%m%d_%H%M%S_"
         time_str = now.strftime(time_format)
-        filename = "{}{}{}".format(time_str, self.STORE_CURRENT_SETTINGS_FILENAME, self.STORE_FILE_EXTENSION)
+        if not isinstance(additional_desc, str):
+            additional_desc = ''
+        else:
+            additional_desc = '_{}_'.format(stringcase.snakecase(additional_desc))
+        filename = "{}{}{}{}".format(time_str, additional_desc, self.STORE_CURRENT_SETTINGS_FILENAME, self.STORE_FILE_EXTENSION)
         return filename
 
     def _dump_get_filename_to_store(self):
@@ -601,8 +654,8 @@ class DividendCompaniesContainer:
         filename_of_pickle_file = self._dump_get_filename_to_store()
         self._dump_store_configs_settings(filename_of_pickle_file)
 
-    def dump_store_configs(self):
-        filename_of_pickle_file = self._dump_get_summary_dump_name_filename()
+    def dump_store_configs(self, additional_desc=None):
+        filename_of_pickle_file = self._dump_get_summary_dump_name_filename(additional_desc)
         self._dump_store_configs_settings(filename_of_pickle_file)
 
     def dump_restore_configs(self):
@@ -618,7 +671,17 @@ class DividendCompaniesContainer:
             logger.info("Add Dividend Company {} to items_list".format(item))
             self.dump_store_configs_curr()
         else:
-            raise ValueError('Selected key {} exist in dataset'.format(key))
+            logger.error('Selected key {} exist in dataset. Item skipped'.format(key))
+    
+    def company_del(self, item_key):
+        force_active = ForceDef.is_force_active(self.force_permissions, ForceDef.DELETE_COMPANY_ITEM_FROM_COMPANIES_LIST)
+        if force_active:
+            item = self.companies_items_dict.pop(item_key, None)
+            logger.info("Deleted Dividend Company {} from items_list".format(item))
+    
+
+    def get_companies_keys(self):
+        return self.companies_items_dict.keys()
 
     def count_companies(self):
         return len(self.companies_items_dict.keys())
@@ -627,34 +690,58 @@ class DividendCompaniesContainer:
         return self.count_companies() > 0
 
     def update_companies_list(self):
-        for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
-            item = self.companies_items_dict[item_key]
-            # Stooq dividends list
-            if item.dividends_list_needs_update():
-                stooq_content = self.stooq_webdriver.parse_operations_website(item.name_short)
-                item.update(stooq_content)
-            
-            # biznesradar
-            if item.fields_needs_update(self.biznesradar_webdriver.update_fields_supported):
-                biznesradar_content = self.biznesradar_webdriver.parse_operations_website(item.name_long)
-                item.update(biznesradar_content)
+        skip_items_up_to = None
+        support_level = None # SupportLevelDef.MANDATORY
 
-            if item.fields_needs_update(self.notowania_pb_webdriver.update_fields_supported):
-                notowania_pb_content = self.notowania_pb_webdriver.parse_operations_website(item.isin_tag)
-                item.update(notowania_pb_content)
+        items_len = len(self.companies_items_dict.keys())
+        with tqdm.tqdm(total=items_len, desc='Update companies list') as pbar:
+            for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+                if isinstance(skip_items_up_to, int) and item_idx < skip_items_up_to:
+                    time.sleep(0.01)
+                    pbar.update(1)
+                    continue
 
-            logger.info("Update company item {} with id {}".format(item, item_idx))
-            self.dump_store_configs_curr()
-            print('test')
+                item = self.companies_items_dict[item_key]
+                # Stooq dividends list
+                if item.dividends_list_needs_update():
+                    stooq_content = self.stooq_webdriver.parse_operations_website(item.name_short)
+                    item.update(stooq_content)
+                
+                # Biznes Radar
+                if item.fields_needs_update(self.biznesradar_webdriver.update_fields_supported(support_level)):
+                    biznesradar_content = self.biznesradar_webdriver.parse_operations_website(item.name_long)
+                    item.update(biznesradar_content)
+
+                # Notowania Puls Biznesu
+                if item.fields_needs_update(self.notowania_pb_webdriver.update_fields_supported(support_level)):
+                    notowania_pb_content = self.notowania_pb_webdriver.parse_operations_website(item.isin_tag)
+                    item.update(notowania_pb_content)
+
+                logger.info("Update company item {} with id {}".format(item, item_idx))
+                pbar.update(1)
+                self.dump_store_configs_curr()
+        logger.info('Update companies list done')
 
     def fetch_dividends_companies_list(self):
         force_active = ForceDef.is_force_active(self.force_permissions, ForceDef.FETCH_BOSSA_COMPANIES_LIST)
         if (not self.dividend_list_prepared()) or  force_active:
-            dividend_list = self.bossa_webdriver.parse_dividend_companies_list(bossa_file_path=bossa_file_path)
-            # dividend_list = self.bossa_webdriver.parse_bossa_dividend_html(bossa_url=bossa_url)
+            # dividend_list = self.bossa_webdriver.parse_dividend_companies_list(bossa_file_path=bossa_file_path)
+            dividend_list = self.bossa_webdriver.parse_dividend_companies_list()
+
+            # add companies
             for item in dividend_list:
                 self.company_add(item)
-            self.dump_store_configs()
+
+            # del companies
+            dividend_list_keys = [item.name_short for item in dividend_list]
+            not_exists_in_web_db = list(set(self.get_companies_keys()) - set(dividend_list_keys))
+            for item_key in not_exists_in_web_db:
+                print('Item {} not exist in the web database. Do you want to delete?'.format(item_key))
+                self.company_del(item_key=item_key)
+                # raise ValueError('Item not contains in web db')
+
+            # save results
+            self.dump_store_configs('raw_dataset')
 
 #############################
 ###### BUSINESS LOGIC  ######
