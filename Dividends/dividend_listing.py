@@ -862,6 +862,7 @@ class DividendCompaniesContainer:
                 # raise ValueError('Item not contains in web db')
 
             # save results
+            self.dump_store_configs_curr()
             self.dump_store_configs('raw_dataset')
         logger.info('Fetch dividends companies list done')
 
@@ -881,7 +882,35 @@ class DividendCompaniesContainer:
 
                 pbar.update(1)
 
+        self.dump_store_configs_curr()
+        self.dump_store_configs('statistics_calculated')
         logger.info('Update companies list - calculate statistics done')
+
+    def sort_by_benchmark_coefficient_companies_list(self):
+        items_len = len(self.companies_items_dict.keys())
+        try:
+            sorted_companies_items_dict = dict(sorted(self.companies_items_dict.items(), key=lambda item: item[1].statistics_module.summary_benchmark_score, reverse=True))
+        except:
+            logger.error('Parse failed')
+
+        logger.info('Sort by benchmark coefficient companies list done')
+
+    def preview_of_companies_list(self):
+        skip_items_up_to = None
+
+        items_len = len(self.companies_items_dict.keys())
+        with tqdm.tqdm(total=items_len, desc='Update companies list') as pbar:
+            for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+                if isinstance(skip_items_up_to, int) and item_idx < skip_items_up_to:
+                    time.sleep(0.01)
+                    pbar.update(1)
+                    continue
+
+                item = self.companies_items_dict[item_key]
+
+                pbar.update(1)
+
+        logger.info('Preview of companies list done')
 
 #############################
 ###### BUSINESS LOGIC  ######
@@ -891,6 +920,7 @@ if __name__=='__main__':
     dividends_list.fetch_dividends_companies_list()
     dividends_list.update_companies_list_web_scraping()
     dividends_list.update_companies_list_calculate_statistics()
+    dividends_list.sort_by_benchmark_coefficient_companies_list()
     dividends_list.dump_store_configs()
     print('done')
 # https://www.bankier.pl/wiadomosc/Inwestowanie-dywidendowe-Poradnik-dla-poczatkujacych-7601780.html
