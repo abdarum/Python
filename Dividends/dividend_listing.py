@@ -810,7 +810,7 @@ class DividendCompaniesContainer:
     def dividend_list_prepared(self):
         return self.count_companies() > 0
 
-    def update_companies_list(self):
+    def update_companies_list_web_scraping(self):
         skip_items_up_to = None
         support_level = None # SupportLevelDef.MANDATORY
 
@@ -887,7 +887,7 @@ class DividendCompaniesContainer:
 if __name__=='__main__':
     dividends_list = DividendCompaniesContainer()
     dividends_list.fetch_dividends_companies_list()
-    dividends_list.update_companies_list()
+    dividends_list.update_companies_list_web_scraping()
     dividends_list.update_companies_list_calculate_statistics()
     dividends_list.dump_store_configs()
     print('done')
