@@ -841,7 +841,7 @@ class DividendCompaniesContainer:
                 logger.info("Update company item {} with id {}".format(item, item_idx))
                 pbar.update(1)
                 self.dump_store_configs_curr()
-        logger.info('Update companies list done')
+        logger.info('Update companies list - web scraping done')
 
     def fetch_dividends_companies_list(self):
         force_active = ForceDef.is_force_active(self.force_permissions, ForceDef.FETCH_BOSSA_COMPANIES_LIST)
@@ -863,6 +863,7 @@ class DividendCompaniesContainer:
 
             # save results
             self.dump_store_configs('raw_dataset')
+        logger.info('Fetch dividends companies list done')
 
     def update_companies_list_calculate_statistics(self):
         skip_items_up_to = None
@@ -880,6 +881,7 @@ class DividendCompaniesContainer:
 
                 pbar.update(1)
 
+        logger.info('Update companies list - calculate statistics done')
 
 #############################
 ###### BUSINESS LOGIC  ######
