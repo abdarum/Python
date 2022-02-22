@@ -2,6 +2,7 @@ import datetime
 import json
 import locale
 import logging
+import math
 import os
 import pickle
 import time
@@ -14,6 +15,7 @@ from pandas_datareader import data as pdr
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
+from statsmodels.stats.weightstats import DescrStatsW
 
 #############################
 ######  User Settings  ######
@@ -481,6 +483,110 @@ class DividendItem:
     def json(self):
         return json.dumps(self.__dict__, default=json_serial)
 
+class DividendCompanyItemStatistics:
+    def __init__(self, ipo_date=None, dividends_list=None):
+        self.erase_data()
+        self.update_dividends_list(dividends_list)
+        self.update_ipo_date(ipo_date)
+
+    def erase_data(self):
+        self.dividends_list = []
+        self.computed_at = None
+        self.occurrence_module = DividendCompanyItemStatistics.DividendsOccurrence()
+        self.summary_benchmark_score = None
+        self.days_since_last_dividend = None
+        self.number_of_dividends_paid = None
+
+    def update_dividends_list(self, dividends_list=None):
+        if dividends_list != None:
+            assert isinstance(dividends_list, list)
+            self.dividends_list.extend(dividends_list)
+            self.dividends_list.sort(key=lambda x: x.date, reverse=True)
+            if len(self.dividends_list) > 0:
+                self.days_since_last_dividend = datetime.datetime.now() - self.dividends_list[0].date
+                self.days_since_last_dividend = self.days_since_last_dividend.days
+                self.number_of_dividends_paid = len(self.dividends_list)
+
+    def update_ipo_date(self, ipo_date=None):
+        self.ipo_date = ipo_date
+
+    def benchmark_score(self):
+        try:
+            summary_score = None
+            dividend_gaps_mean = self.occurrence_module.dividend_gaps_in_days_mean
+            dividend_gaps_std = self.occurrence_module.dividend_gaps_in_days_std
+            days_since_last_dividend = self.days_since_last_dividend
+            number_of_dividends_paid = self.number_of_dividends_paid
+            
+            #############
+            # recalculate - prepare for compute single coefficient
+            #############
+            param_dividend_gaps_mean = (365.0/dividend_gaps_mean)
+            param_dividend_gaps_std = (90.0/dividend_gaps_std)
+            number_of_dividends_paid = (7.0/number_of_dividends_paid)
+
+            # ignore all cases up to 450 days
+            param_days_since_last_dividend = self.days_since_last_dividend - 450
+            if param_days_since_last_dividend > 0:
+                param_days_since_last_dividend = 1/float(param_days_since_last_dividend)
+            else:
+                param_days_since_last_dividend = 1
+
+            benchmark_formula = [
+                {'weight': 30, 'val': param_dividend_gaps_mean},
+                {'weight': 40, 'val': param_dividend_gaps_std},
+                {'weight': 10, 'val': number_of_dividends_paid},
+                {'weight': 20, 'val': param_days_since_last_dividend},
+            ]
+            statsmodel = DescrStatsW(
+                data=[item.get('val') for item in benchmark_formula],
+                weights=[item.get('weight') for item in benchmark_formula],
+                ddof=1)
+
+            summary_score = statsmodel.sum / statsmodel.sum_weights
+            self.summary_benchmark_score = summary_score
+        except TypeError:
+            # skip if data are None
+            self.summary_benchmark_score = 0
+
+    def compute(self):
+        self.occurrence_module.compute(self.dividends_list)
+        self.computed_at = datetime.datetime.now()
+        self.benchmark_score()
+
+
+
+    class DividendsOccurrence:
+        def __init__(self):
+            self.dividend_gaps_in_days_list = []
+            self.dividend_gaps_in_days_mean = None
+            self.dividend_gaps_in_days_std = None
+
+        def compute(self, dividends_list=None):
+            self.prepare_dividend_gaps_in_days(dividends_list)
+            self.compute_statistics()
+
+        def prepare_dividend_gaps_in_days(self, dividends_list):
+            dividend_gaps_in_days_list = []
+            dividend_date_list = [item.date for item in dividends_list]
+            if len(dividend_date_list) > 1:
+                dividend_gaps_in_days_list = [dividend_date_list[idx-1] - dividend_date_list[idx] for idx in range(1, len(dividend_date_list))]
+                dividend_gaps_in_days_list = [item.days for item in dividend_gaps_in_days_list]
+
+            self.dividend_gaps_in_days_list = dividend_gaps_in_days_list
+
+        def compute_statistics(self):
+            dividend_gaps_in_days_list = self.dividend_gaps_in_days_list
+
+            if len(dividend_gaps_in_days_list) > 1:
+                weights = list(range(len(dividend_gaps_in_days_list), 0, -1))
+                weights_sum = sum(weights)
+                weights = [0.25*math.pow(val, 2) for val in weights]
+                statsmodel = DescrStatsW(dividend_gaps_in_days_list, weights=weights, ddof=1)
+                self.dividend_gaps_in_days_mean = statsmodel.mean
+                self.dividend_gaps_in_days_std = statsmodel.std
+
+
 class DividendCompanyItem:
     def __init__(self,
             bossa_instrument_url=None,
@@ -566,6 +672,21 @@ class DividendCompanyItem:
             values_list.append(self.__dict__.get(key))
 
         return None in values_list
+
+    def compute_statistics(self):
+        # calculated_statistics
+        try: 
+            # check if calculated_statistics exist 
+            self.statistics_module
+        except AttributeError: 
+            self.statistics_module = None
+
+        
+        self.statistics_module = DividendCompanyItemStatistics(
+            dividends_list=self.dividends_list,
+            ipo_date=self.ipo_date)
+        self.statistics_module.compute()
+
 
 class DividendCompaniesContainer:
     companies_items_dict = {}
@@ -743,6 +864,23 @@ class DividendCompaniesContainer:
             # save results
             self.dump_store_configs('raw_dataset')
 
+    def update_companies_list_calculate_statistics(self):
+        skip_items_up_to = None
+
+        items_len = len(self.companies_items_dict.keys())
+        with tqdm.tqdm(total=items_len, desc='Update companies list') as pbar:
+            for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+                if isinstance(skip_items_up_to, int) and item_idx < skip_items_up_to:
+                    time.sleep(0.01)
+                    pbar.update(1)
+                    continue
+
+                item = self.companies_items_dict[item_key]
+                item.compute_statistics()
+
+                pbar.update(1)
+
+
 #############################
 ###### BUSINESS LOGIC  ######
 #############################
@@ -750,6 +888,7 @@ if __name__=='__main__':
     dividends_list = DividendCompaniesContainer()
     dividends_list.fetch_dividends_companies_list()
     dividends_list.update_companies_list()
+    dividends_list.update_companies_list_calculate_statistics()
     dividends_list.dump_store_configs()
     print('done')
 # https://www.bankier.pl/wiadomosc/Inwestowanie-dywidendowe-Poradnik-dla-poczatkujacych-7601780.html
