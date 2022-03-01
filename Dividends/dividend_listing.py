@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import locale
@@ -706,6 +707,21 @@ class DividendCompanyItem:
     def json_str(self):
         return json.dumps(self.__dict__, default=json_serial, indent=4, ensure_ascii=False)
 
+    def json_str_without_duplicates(self):
+        ret_dict = copy.deepcopy(self.__dict__)
+        try:
+            del ret_dict['statistics_module'].dividends_list
+        except AttributeError: 
+            logger.debug('dividends_list from statistics_module variable doesn\'t exist. It was deleted before')
+
+        try:
+            del ret_dict['statistics_module'].ipo_date
+        except AttributeError: 
+            logger.debug('ipo_date from statistics_module variable doesn\'t exist. It was deleted before')
+
+
+        return json.dumps(ret_dict, default=json_serial, indent=4, ensure_ascii=False, sort_keys=True)
+
     def dividends_list_needs_update(self):
         return len(self.dividends_list) == 0
 
@@ -1007,7 +1023,7 @@ class DividendCompaniesContainer:
                 str_val = items_separator_str.format(item.statistics_module.idx_on_list)
                 self.data_content_log_append(str_val)
 
-                str_val = item.json_str()
+                str_val = item.json_str_short()
                 self.data_content_log_append(str_val)
 
                 pbar.update(1)
