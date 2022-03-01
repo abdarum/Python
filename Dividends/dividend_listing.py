@@ -45,10 +45,13 @@ print("Log stored at: {}".format(log_file_path))
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
-
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
-    if isinstance(obj, DividendItem):
+    if isinstance(obj, (
+            DividendItem, 
+            DividendCompanyItemStatistics, 
+            DividendCompanyItemStatistics.DividendsOccurrence,
+        )):
         return obj.__dict__
     raise TypeError ("Type %s not serializable" % type(obj))
 
@@ -661,6 +664,9 @@ class DividendCompanyItem:
     def json(self):
         return json.dumps(self.__dict__, default=json_serial)
 
+    def json_str(self):
+        return json.dumps(self.__dict__, default=json_serial, indent=4, ensure_ascii=False)
+
     def dividends_list_needs_update(self):
         return len(self.dividends_list) == 0
 
@@ -697,6 +703,7 @@ class DividendCompaniesContainer:
     # store files constants
     STORE_CURRENT_SETTINGS_FILENAME = 'curr_settings_dividend_listing'
     STORE_FILE_EXTENSION = '.pickle'
+    FILENAME_OF_DATA_LOG_FILE = '__data_preview.log'
 
     #############################
     ######  Class methods  ######
@@ -715,10 +722,22 @@ class DividendCompaniesContainer:
         logger.info("Set locale to {}".format(locale.getlocale()))
         # pl_datetime_now = datetime.datetime.now().strftime("%d %B %Y godz: %H:%M:%S")
         self.dumps_dir_path = os.path.abspath(os.path.join(self.base_webdriver.download_dir_path, os.pardir, 'dumps'))
+        self.path_to_data_log_file = os.path.join(gen_logs_dir_path, self.FILENAME_OF_DATA_LOG_FILE)
+        self.data_content_log_del()
         self.dump_restore_configs()
 
     def json(self):
         return json.dumps(self.__dict__)
+
+    def data_content_log_del(self):
+        try:
+            os.remove(self.path_to_data_log_file)
+        except OSError:
+            pass
+            
+    def data_content_log_append(self, str_val):
+        with open(self.path_to_data_log_file, "a", encoding='utf-8') as data_file:
+            print(str_val, file=data_file)
 
     # Store settings 
     def _dump_prepare_dict_to_store(self):
@@ -733,7 +752,7 @@ class DividendCompaniesContainer:
             logger.error("Dump restore failed")
             
 
-    def _dump_get_summary_dump_name_filename(self, additional_desc=None):
+    def _dump_get_summary_dump_name_filename(self, additional_desc=None, extension=None):
         now = datetime.datetime.now()
         time_format = "%Y%m%d_%H%M%S_"
         time_str = now.strftime(time_format)
@@ -741,7 +760,9 @@ class DividendCompaniesContainer:
             additional_desc = ''
         else:
             additional_desc = '_{}_'.format(stringcase.snakecase(additional_desc))
-        filename = "{}{}{}{}".format(time_str, additional_desc, self.STORE_CURRENT_SETTINGS_FILENAME, self.STORE_FILE_EXTENSION)
+        if extension is None:
+            extension = self.STORE_FILE_EXTENSION
+        filename = "{}{}{}{}".format(time_str, additional_desc, self.STORE_CURRENT_SETTINGS_FILENAME, extension)
         return filename
 
     def _dump_get_filename_to_store(self):
@@ -890,6 +911,10 @@ class DividendCompaniesContainer:
         items_len = len(self.companies_items_dict.keys())
         try:
             sorted_companies_items_dict = dict(sorted(self.companies_items_dict.items(), key=lambda item: item[1].statistics_module.summary_benchmark_score, reverse=True))
+            for item_idx, item_key in enumerate(sorted_companies_items_dict.keys()):
+                item = self.companies_items_dict[item_key]
+                item.statistics_module.idx_on_list = item_idx
+                self.companies_items_dict = sorted_companies_items_dict
         except:
             logger.error('Parse failed')
 
@@ -897,7 +922,8 @@ class DividendCompaniesContainer:
 
     def preview_of_companies_list(self):
         skip_items_up_to = None
-
+        items_separator_str = '\n------------------------------\n\t\tIdx {}\n------------------------------\n'
+        
         items_len = len(self.companies_items_dict.keys())
         with tqdm.tqdm(total=items_len, desc='Update companies list') as pbar:
             for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
@@ -907,6 +933,11 @@ class DividendCompaniesContainer:
                     continue
 
                 item = self.companies_items_dict[item_key]
+                str_val = items_separator_str.format(item.statistics_module.idx_on_list)
+                self.data_content_log_append(str_val)
+
+                str_val = item.json_str()
+                self.data_content_log_append(str_val)
 
                 pbar.update(1)
 
@@ -921,6 +952,7 @@ if __name__=='__main__':
     dividends_list.update_companies_list_web_scraping()
     dividends_list.update_companies_list_calculate_statistics()
     dividends_list.sort_by_benchmark_coefficient_companies_list()
+    dividends_list.preview_of_companies_list()
     dividends_list.dump_store_configs()
     print('done')
 # https://www.bankier.pl/wiadomosc/Inwestowanie-dywidendowe-Poradnik-dla-poczatkujacych-7601780.html
