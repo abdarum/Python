@@ -268,21 +268,19 @@ class StooqWebdriver:
         dividend_table_html = self.base_webdriver.get_html_of_element(By.ID, 'fth1')
 
         dividends_list = self.parse_operation_table(dividend_table_html)
-        for divid_val_item in dividends_list:
-            divid_val_item.close_share_price_nominal = self.get_close_share_price_nominal(short_name, divid_val_item.date)
 
         ret_dict = {}
         ret_dict['dividends_list'] = dividends_list
                 
         return ret_dict
 
-
-    def get_close_share_price_nominal(self, name_short, date):
+    @staticmethod
+    def get_close_share_price_nominal(name_short, date):
         # query_date_str should be in format '2002-07-02'
-        query_date_str = date.strftime(self.SHARE_PRICE_VALUE_TIME_FORMAT)
+        query_date_str = date.strftime(StooqWebdriver.SHARE_PRICE_VALUE_TIME_FORMAT)
         query_name_short = name_short
-        if not query_name_short.endswith(self.SHARE_PRICE_VALUE_COUNTRY_SUFFIX):
-            query_name_short += self.SHARE_PRICE_VALUE_COUNTRY_SUFFIX
+        if not query_name_short.endswith(StooqWebdriver.SHARE_PRICE_VALUE_COUNTRY_SUFFIX):
+            query_name_short += StooqWebdriver.SHARE_PRICE_VALUE_COUNTRY_SUFFIX
         df = pdr.DataReader(query_name_short, "stooq", query_date_str, query_date_str)
         val = None
         try:
@@ -290,6 +288,12 @@ class StooqWebdriver:
         except:
             return None
         return val
+
+    @staticmethod
+    def get_stooq_instrument_url(name_short):
+        key_label = 'stooq_instrument'
+        link_url = StooqWebdriver.URL_INSTRUMENT.format(name_short)
+        return key_label, link_url
 
 class BiznesradarWebdriver:
     BIZNESRADAR_INSTRUMENTS_URL = 'https://www.biznesradar.pl/operacje/{}' # next long name of instrument e.g. ATLANTAPL
@@ -359,6 +363,11 @@ class BiznesradarWebdriver:
             update_fields_supported.extend(optional)
         return update_fields_supported
 
+    @staticmethod
+    def get_biznesradar_instrument_url(name_long):
+        key_label = 'biznesradar_instrument'
+        link_url = BiznesradarWebdriver.BIZNESRADAR_INSTRUMENTS_URL.format(name_long)
+        return key_label, link_url
 
 class BossaWebdriver:
     URL_INSTRUMENTS_SUFFIX = '/notowania/instrumenty/'
@@ -386,15 +395,21 @@ class BossaWebdriver:
             if( not link_url is None and self.URL_INSTRUMENTS_SUFFIX in link_url ):
                 instrument_short = link_url.split(self.URL_INSTRUMENTS_SUFFIX)[-1]
                 instrument_long = link.text
-                dividend_company_item = "{}{}".format(self.URL_INSTRUMENTS_PREFIX, link_url)
+                if not bossa_file_path is None:
+                    link_url = "{}{}".format(self.URL_INSTRUMENTS_PREFIX, link_url)
                 dividend_company_item = DividendCompanyItem(
-                    bossa_instrument_url = dividend_company_item,
+                    bossa_instrument_url = link_url,
                     name_short = instrument_short,
                     name_long = instrument_long)
                 dividend_ret_list.append(dividend_company_item)
 
         return dividend_ret_list
 
+    @staticmethod
+    def get_bossa_instrument_url(name_short):
+        key_label = 'bossa_instrument'
+        link_url = "{}{}{}".format(BossaWebdriver.URL_INSTRUMENTS_PREFIX, BossaWebdriver.URL_INSTRUMENTS_SUFFIX, name_short)
+        return key_label, link_url
 
 class NotowaniaPulsBiznesuWebdriver:
     URL_INSTRUMENT_DETAILS = 'https://notowania.pb.pl/instrument/{}/informacje-spolka'
@@ -468,6 +483,11 @@ class NotowaniaPulsBiznesuWebdriver:
             update_fields_supported.extend(optional)
         return update_fields_supported
 
+    @staticmethod
+    def get_notowaniapb_instrument_url(isin_tag):
+        key_label = 'notowaniapb_instrument'
+        link_url = NotowaniaPulsBiznesuWebdriver.URL_INSTRUMENT_DETAILS.format(isin_tag)
+        return key_label, link_url
 
 class DividendItem:
     def __init__(self, date=None, percent=None, nominal=None, rights_issue=None,
@@ -617,7 +637,6 @@ class DividendCompanyItem:
         logger.info("DividendCompanyItem created: {}".format(str(self)))
 
     def update(self, update_dict):
-        bossa_instrument_url = update_dict.get('bossa_instrument_url')
         name_short = update_dict.get('name_short')
         name_long = update_dict.get('name_long')
         isin_tag = update_dict.get('isin_tag')
@@ -629,8 +648,6 @@ class DividendCompanyItem:
         description_of_activity = update_dict.get('description_of_activity')
 
 
-        if bossa_instrument_url != None:        
-            self.bossa_instrument_url = bossa_instrument_url
         if name_short != None:        
             self.name_short = name_short
         if name_long != None:        
@@ -651,13 +668,35 @@ class DividendCompanyItem:
         if dividends_list != None:
             self.update_dividends_list(dividends_list)
 
-
+        self.force_update_urls()
 
     def update_dividends_list(self, dividends_list=None):
         if dividends_list != None:
             assert isinstance(dividends_list, list)
             self.dividends_list.extend(dividends_list)
 
+        for divid_val_item in self.dividends_list:
+            divid_val_item.close_share_price_nominal = StooqWebdriver.get_close_share_price_nominal(self.name_short, divid_val_item.date)
+
+    def force_update_urls(self):
+            try:
+                del self.bossa_instrument_url
+            except AttributeError:
+                logger.debug('bossa_instrument_url variable doesn\'t exist. It was deleted before')
+
+            self.url_dict = {}
+            if not self.name_long is None:
+                key_label, link_url = BiznesradarWebdriver.get_biznesradar_instrument_url(self.name_long)
+                self.url_dict[key_label] = link_url
+            if not self.name_short is None:
+                key_label, link_url = StooqWebdriver.get_stooq_instrument_url(self.name_short)
+                self.url_dict[key_label] = link_url
+                key_label, link_url = BossaWebdriver.get_bossa_instrument_url(self.name_short)
+                self.url_dict[key_label] = link_url
+            if not self.isin_tag is None:
+                key_label, link_url = NotowaniaPulsBiznesuWebdriver.get_notowaniapb_instrument_url(self.isin_tag)
+                self.url_dict[key_label] = link_url
+            
     def __str__(self):
         return str(self.__dict__)
 
@@ -920,7 +959,39 @@ class DividendCompaniesContainer:
 
         logger.info('Sort by benchmark coefficient companies list done')
 
-    def preview_of_companies_list(self):
+    
+    #############################
+    ######      Tools      ######
+    #############################
+
+    def tool_manual_update_of_companies_items_dict(self):
+        skip_items_up_to = None
+        
+        items_len = len(self.companies_items_dict.keys())
+        with tqdm.tqdm(total=items_len, desc='Update companies list') as pbar:
+            for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+                if isinstance(skip_items_up_to, int) and item_idx < skip_items_up_to:
+                    time.sleep(0.01)
+                    pbar.update(1)
+                    continue
+
+                item = self.companies_items_dict[item_key]
+
+                ####################
+                # Manual update here
+
+                item.force_update_urls()
+
+                # Manual update here
+                ####################
+                pbar.update(1)
+        # save results
+        # self.dump_store_configs_curr()
+        # self.dump_store_configs('manual_update_dataset')
+
+        logger.info('Tool manual update of companies items dict done')
+
+    def tool_preview_of_companies_list(self):
         skip_items_up_to = None
         items_separator_str = '\n------------------------------\n\t\tIdx {}\n------------------------------\n'
         
@@ -952,7 +1023,7 @@ if __name__=='__main__':
     dividends_list.update_companies_list_web_scraping()
     dividends_list.update_companies_list_calculate_statistics()
     dividends_list.sort_by_benchmark_coefficient_companies_list()
-    dividends_list.preview_of_companies_list()
+    dividends_list.tool_preview_of_companies_list()
     dividends_list.dump_store_configs()
     print('done')
 # https://www.bankier.pl/wiadomosc/Inwestowanie-dywidendowe-Poradnik-dla-poczatkujacych-7601780.html
