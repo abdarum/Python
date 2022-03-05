@@ -91,6 +91,38 @@ class ForceDef:
         return False
 
 
+class StringFormater:
+    MAX_LINE_WITH = 50
+    LINE_INDENT = 4
+
+    @staticmethod
+    def dict_of_list_formater(in_dict):
+        assert isinstance(in_dict, dict)
+        ret_str = ''
+        ret_str += '{\n'
+        for key in in_dict.keys():
+            ret_str += '\t"{} - len({:3})": {},\n'.format(key, len(in_dict[key]), str(in_dict[key]))
+        ret_str = ret_str[:-2]
+        ret_str += '\n}\n'
+        return ret_str
+
+    @staticmethod
+    def main_header(desc):
+        ret_str = ''
+        line_separator_core = ''.join(['-' for i in range(StringFormater.MAX_LINE_WITH)])
+        line_separator = '\n{}\n'.format(line_separator_core)
+        ret_str = '{}\t\t{}{}'.format(line_separator, desc, line_separator)
+        return ret_str
+    
+    @staticmethod
+    def sub_header(desc):
+        ret_str = ''
+        line_separator_core = ''.join([' ' for idx in range(StringFormater.LINE_INDENT)])
+        line_separator_core += ''.join(['-' for idx in range(StringFormater.MAX_LINE_WITH - len(line_separator_core))])
+        line_separator = '\n{}\n'.format(line_separator_core)
+        ret_str = '{}\t\t{}{}'.format(line_separator, desc, line_separator)
+        return ret_str
+
 class BaseWebdriver:
     HTTP_TIMEOUT_SECONDS = 20
 
@@ -719,8 +751,9 @@ class DividendCompanyItem:
         except AttributeError: 
             logger.debug('ipo_date from statistics_module variable doesn\'t exist. It was deleted before')
 
+        ret_dict['statistics_module'].occurrence_module.dividend_gaps_in_days_list = str(ret_dict['statistics_module'].occurrence_module.dividend_gaps_in_days_list)
 
-        return json.dumps(ret_dict, default=json_serial, indent=4, ensure_ascii=False, sort_keys=True)
+        return json.dumps(ret_dict, default=json_serial, indent=4, ensure_ascii=False)
 
     def dividends_list_needs_update(self):
         return len(self.dividends_list) == 0
@@ -898,7 +931,7 @@ class DividendCompaniesContainer:
                     pbar.update(1)
                     continue
 
-                item = self.companies_items_dict[item_key]
+                item: DividendCompanyItem = self.companies_items_dict[item_key]
                 # Stooq dividends list
                 if item.dividends_list_needs_update():
                     stooq_content = self.stooq_webdriver.parse_operations_website(item.name_short)
@@ -953,7 +986,7 @@ class DividendCompaniesContainer:
                     pbar.update(1)
                     continue
 
-                item = self.companies_items_dict[item_key]
+                item: DividendCompanyItem = self.companies_items_dict[item_key]
                 item.compute_statistics()
 
                 pbar.update(1)
@@ -967,7 +1000,7 @@ class DividendCompaniesContainer:
         try:
             sorted_companies_items_dict = dict(sorted(self.companies_items_dict.items(), key=lambda item: item[1].statistics_module.summary_benchmark_score, reverse=True))
             for item_idx, item_key in enumerate(sorted_companies_items_dict.keys()):
-                item = self.companies_items_dict[item_key]
+                item: DividendCompanyItem = self.companies_items_dict[item_key]
                 item.statistics_module.idx_on_list = item_idx
                 self.companies_items_dict = sorted_companies_items_dict
         except:
@@ -991,7 +1024,7 @@ class DividendCompaniesContainer:
                     pbar.update(1)
                     continue
 
-                item = self.companies_items_dict[item_key]
+                item: DividendCompanyItem = self.companies_items_dict[item_key]
 
                 ####################
                 # Manual update here
@@ -1007,10 +1040,49 @@ class DividendCompaniesContainer:
 
         logger.info('Tool manual update of companies items dict done')
 
+    def tool_prepare_sector_summary(self, max_item_idx=None):
+        self.sort_by_benchmark_coefficient_companies_list()
+        max_print_item_idx = max_item_idx
+        ret_dict = {'sector_gpw': {}, 'sector_name': {}}
+
+        for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+            if not max_print_item_idx is None and item_idx > max_print_item_idx:
+                break
+
+            item: DividendCompanyItem = self.companies_items_dict[item_key]
+            item_benchmark_val = '{:.2f}'.format(item.statistics_module.summary_benchmark_score)
+            item_append_val = (item.name_short, item.statistics_module.idx_on_list, item_benchmark_val)
+            item_sector_gpw_exist = not ret_dict['sector_gpw'].get(item.sector_gpw, None) is None
+            item_sector_name_exist = not ret_dict['sector_name'].get(item.sector_name, None) is None
+            if not item_sector_gpw_exist:
+                ret_dict['sector_gpw'][item.sector_gpw] = []
+            ret_dict['sector_gpw'][item.sector_gpw].append(item_append_val)
+            if not item_sector_name_exist:
+                ret_dict['sector_name'][item.sector_name] = []
+            ret_dict['sector_name'][item.sector_name].append(item_append_val)
+
+        logger.info('Tool prepare sector summary done')
+        return ret_dict
+
+    def tool_prepare_sector_summary_str(self, max_item_idx=None):
+        ret_dict_str = ''
+        ret_dict = self.tool_prepare_sector_summary(max_item_idx)
+        ret_dict_str += StringFormater.main_header('Sectors summary')
+        ret_dict_str += StringFormater.sub_header('GPW')
+        ret_dict_str += str(StringFormater.dict_of_list_formater(ret_dict['sector_gpw']))
+        ret_dict_str += StringFormater.sub_header('Sector name')
+        ret_dict_str += str(StringFormater.dict_of_list_formater(ret_dict['sector_name']))
+
+        return ret_dict_str
+
     def tool_preview_of_companies_list(self):
         skip_items_up_to = None
-        items_separator_str = '\n------------------------------\n\t\tIdx {}\n------------------------------\n'
-        
+        items_separator_str = StringFormater.main_header('Idx {}')
+        max_print_item_idx = 100
+
+        str_val = self.tool_prepare_sector_summary_str(max_print_item_idx)
+        self.data_content_log_append(str_val)
+
         items_len = len(self.companies_items_dict.keys())
         with tqdm.tqdm(total=items_len, desc='Update companies list') as pbar:
             for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
@@ -1019,11 +1091,14 @@ class DividendCompaniesContainer:
                     pbar.update(1)
                     continue
 
-                item = self.companies_items_dict[item_key]
+                if not max_print_item_idx is None and item_idx > max_print_item_idx:
+                    break
+
+                item: DividendCompanyItem = self.companies_items_dict[item_key]
                 str_val = items_separator_str.format(item.statistics_module.idx_on_list)
                 self.data_content_log_append(str_val)
 
-                str_val = item.json_str_short()
+                str_val = item.json_str_without_duplicates()
                 self.data_content_log_append(str_val)
 
                 pbar.update(1)
