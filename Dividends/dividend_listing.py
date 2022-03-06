@@ -9,6 +9,7 @@ import pickle
 import time
 
 import json_logging  # logging
+import numpy
 import stringcase
 import tqdm
 from bs4 import BeautifulSoup
@@ -54,6 +55,8 @@ def json_serial(obj):
             DividendCompanyItemStatistics.DividendsOccurrence,
         )):
         return obj.__dict__
+    if isinstance(obj, numpy.int64):
+        return int(obj)
     raise TypeError ("Type %s not serializable" % type(obj))
 
 #############################
@@ -96,12 +99,15 @@ class StringFormater:
     LINE_INDENT = 4
 
     @staticmethod
-    def dict_of_list_formater(in_dict):
+    def dict_of_list_formater(in_dict, len_of_items=False):
         assert isinstance(in_dict, dict)
+        len_str = ''
         ret_str = ''
         ret_str += '{\n'
         for key in in_dict.keys():
-            ret_str += '\t"{} - len({:3})": {},\n'.format(key, len(in_dict[key]), str(in_dict[key]))
+            if len_of_items:
+                len_str = ' - len({:3})'.format(len(in_dict[key]))
+            ret_str += '\t"{}{}": {},\n'.format(key, len_str, str(in_dict[key]))
         ret_str = ret_str[:-2]
         ret_str += '\n}\n'
         return ret_str
@@ -579,7 +585,7 @@ class DividendCompanyItemStatistics:
             #############
             param_dividend_gaps_mean = (365.0/dividend_gaps_mean)
             param_dividend_gaps_std = (90.0/dividend_gaps_std)
-            number_of_dividends_paid = (7.0/number_of_dividends_paid)
+            number_of_dividends_paid = (9.0/number_of_dividends_paid)
 
             # ignore all cases up to 450 days
             param_days_since_last_dividend = self.days_since_last_dividend - 450
@@ -1069,16 +1075,38 @@ class DividendCompaniesContainer:
         ret_dict = self.tool_prepare_sector_summary(max_item_idx)
         ret_dict_str += StringFormater.main_header('Sectors summary')
         ret_dict_str += StringFormater.sub_header('GPW')
-        ret_dict_str += str(StringFormater.dict_of_list_formater(ret_dict['sector_gpw']))
+        ret_dict_str += str(StringFormater.dict_of_list_formater(ret_dict['sector_gpw'], len_of_items=True))
         ret_dict_str += StringFormater.sub_header('Sector name')
-        ret_dict_str += str(StringFormater.dict_of_list_formater(ret_dict['sector_name']))
+        ret_dict_str += str(StringFormater.dict_of_list_formater(ret_dict['sector_name'], len_of_items=True))
 
+        return ret_dict_str
+
+    def tool_prepare_toc_str(self, max_item_idx=None):
+        max_print_item_idx = max_item_idx
+        ret_dict = {}
+        ret_dict_str = ''
+
+        for item_idx, item_key in enumerate(self.companies_items_dict.keys()):
+            if not max_print_item_idx is None and item_idx > max_print_item_idx:
+                break
+
+            item: DividendCompanyItem = self.companies_items_dict[item_key]
+            item_benchmark_val = '{:.2f}'.format(item.statistics_module.summary_benchmark_score)
+            item_ret_val = (item.name_short, item.name_long, item_benchmark_val, item.sector_gpw, item.sector_name, item.statistics_module.occurrence_module.dividend_gaps_in_days_mean)
+            ret_dict[item_idx] = item_ret_val
+
+        ret_dict_str += StringFormater.main_header('Table of content')
+        ret_dict_str += StringFormater.dict_of_list_formater(ret_dict)
         return ret_dict_str
 
     def tool_preview_of_companies_list(self):
         skip_items_up_to = None
         items_separator_str = StringFormater.main_header('Idx {}')
         max_print_item_idx = 100
+
+        
+        str_val = self.tool_prepare_toc_str(max_print_item_idx)
+        self.data_content_log_append(str_val)
 
         str_val = self.tool_prepare_sector_summary_str(max_print_item_idx)
         self.data_content_log_append(str_val)
