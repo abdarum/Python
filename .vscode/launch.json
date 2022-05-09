@@ -11,6 +11,12 @@
             "program": "${file}",
             // "args": ["-s C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne","-d C:\\Kornel_Zdjecia\\telefon_tmp","-n", "-v"],
             // "args": ["-p", "-v"],
+            "args": [
+                "-P C:\\Kornel\\GitHub\\Python\\Photos_Management\\config_file.json"
+                // "-P C:/Kornel/GitHub/Python/Photos_Management/config_file.json"
+                // "-P C:\Kornel\GitHub\Python\Photos_Management\config_file.json"
+                // "-P C:\\\\Kornel\\\\GitHub\\\\Python\\\\Photos_Management\\\\config_file.json"
+            ],
             "console": "integratedTerminal"
         }
     ]

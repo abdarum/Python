@@ -1,0 +1,9 @@
+
+{
+    "sources": ["\\\\networkpc\\image\\Camera", "C:\\image\\Camera"], 
+    "destinations": ["D:\\images"], 
+    "delete_files":true, 
+    "skip_duplicates":false,
+    "verbose":true,
+    "no_action":false
+}

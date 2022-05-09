@@ -10,6 +10,7 @@ import glob
 import tqdm
 # logging
 import json_logging, logging, datetime
+import json
 
 source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source"
 destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source_helper"
@@ -36,6 +37,9 @@ logger.setLevel(logging.DEBUG)
 
 log_filename = "dup_photo_rem_log_" + __init_datestamp + ".json"
 log_file_path = os.path.abspath(os.path.join(gen_dir_path, log_filename))
+if not os.path.exists(gen_dir_path):
+    os.makedirs(gen_dir_path)
+
 logger.addHandler(logging.FileHandler(log_file_path))
 print("Log stored at: {}".format(log_file_path))
 
@@ -269,6 +273,8 @@ def parse_and_execute_cli():
     # Add the arguments to the parser
     ap.add_argument("-p", "--preset", required=False, action="store_true",
     help="execute preset in code options and exit")
+    ap.add_argument("-P", "--preset_path", required=False, 
+    help="path of preset config file - execute preset and exit")
     ap.add_argument("-s", "--source", required=False,
     help="path of source directory")
     ap.add_argument("-d", "--destination", required=False,
@@ -291,6 +297,15 @@ def parse_and_execute_cli():
 
     if len(sys.argv)==1:
         ap.print_help()
+        sys.exit(1)
+
+    if args['preset_path'] != None:
+        # python C:\GitHub\Python\duplicated_photos_remove.py -P C:\\GitHub\\Python\\Photos_Management\\config_file.json 
+        preset_config_path = args['preset_path'].strip()
+        with open(preset_config_path, 'r') as f:
+            data = json.load(f)
+            tmp_var2 = ''
+            auto_scan_directories(**data)
         sys.exit(1)
 
     if args['preset'] == True:
