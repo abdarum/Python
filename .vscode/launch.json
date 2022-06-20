@@ -8,14 +8,19 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
+            "cwd": "${fileDirname}",
             "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "duplicated_photos_remove",
+            "type": "python",
+            "request": "launch",
+            "program": "Photos_Management\\duplicated_photos_remove.py",
             // "args": ["-s C:\\Kornel_Zdjecia\\___Gallery_Gotowe_finalne","-d C:\\Kornel_Zdjecia\\telefon_tmp","-n", "-v"],
             // "args": ["-p", "-v"],
             "args": [
                 "-P C:\\Kornel\\GitHub\\Python\\Photos_Management\\config_file.json"
-                // "-P C:/Kornel/GitHub/Python/Photos_Management/config_file.json"
-                // "-P C:\Kornel\GitHub\Python\Photos_Management\config_file.json"
-                // "-P C:\\\\Kornel\\\\GitHub\\\\Python\\\\Photos_Management\\\\config_file.json"
             ],
             "console": "integratedTerminal"
         }
