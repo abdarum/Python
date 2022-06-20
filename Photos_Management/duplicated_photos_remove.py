@@ -11,6 +11,7 @@ import tqdm
 # logging
 import json_logging, logging, datetime
 import json
+import pytest
 
 source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source"
 destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source_helper"
@@ -234,10 +235,99 @@ class DirectoryStructure:
             json_log = "print_prepared_to_delete - {}".format(log_msg.replace('\n', ' '))
             logger.info(json_log)
 
+class TestDirectoryStructure:
+    DATASET_FOR_TESTS_PATH = 'Photos_Management\\test_duplicates_dataset.json'
+
+    # run from command line
+    # python -m pytest Photos_Management\duplicated_photos_remove.py::TestDirectoryStructure
+    # 
+    # run from python script
+    # retcode = pytest.main(["<X:\\abs_repo_path>\\Photos_Management\\duplicated_photos_remove.py::TestDirectoryStructure"])
+    #     with console output add -s parameter
+    #     retcode = pytest.main(["<X:\\abs_repo_path>\\Photos_Management\\duplicated_photos_remove.py::TestDirectoryStructure", "-s"])
+
+    ######################
+    ###  Tools
+    ######################
+    @staticmethod
+    def print_variable_to_file(variable, file_path=None):
+        str_to_print = None
+        str_to_print = str(variable)
+        if str_to_print:
+            if file_path is None:
+                file_path = "gen/log_variable.txt"
+            file_path = os.path.abspath(os.path.join(os.getcwd(), file_path))
+            with open(file_path, 'w') as f:
+                print(str_to_print, file=f)
+    
+    @staticmethod
+    def save_dict_to_json(variable, file_path=None):
+        str_to_print = None
+        str_to_print = json.dumps(variable, indent=4, ensure_ascii=False)
+        if str_to_print:
+            if file_path is None:
+                file_path = "gen/log_variable.json"
+            file_path = os.path.abspath(os.path.join(os.getcwd(), file_path))
+            with open(file_path, 'w') as f:
+                print(str_to_print, file=f)
+    
+    @pytest.fixture
+    def load_dataset(self):
+        data = None
+        file_path = os.path.abspath(os.path.join(os.getcwd(), self.DATASET_FOR_TESTS_PATH))
+        with open(file_path) as f:
+            data = json.load(f)
+        f.close()
+        return data
+
+    def compare_execution_data_with_saved_preset(self, data):
+        # destination.delete_from_current_directory list will be compared with saved list from attached data
+        #   Files won't be deleted from pc
+        #   data = {'s': '\\\\online_pc\\IMGS', 'd': 'C:\\local_pc\\IMGS', 'delete_files': true, 'skip_duplicates': false, 'verbose': true, 'no_action': true, 'source.scanned_files_list': [], 'destination.delete_from_current_directory': [], 'destination.scanned_files_list': []}
+        skip_duplicates = data.get('skip_duplicates')
+        s = data.get('s')
+        d = data.get('d')
+
+        # source
+        source = DirectoryStructure(s, skip_duplicates=skip_duplicates)
+        source.scanned_files_list = data['source.scanned_files_list']
+        source.scan_directory()
+
+        # destination
+        destination = DirectoryStructure(d, skip_duplicates=skip_duplicates)
+        destination.scanned_files_list = data['destination.scanned_files_list']
+        destination.scan_directory()
+
+        destination.prepare_to_delete_existing_files(source)
+
+        set_data = set(data['destination.delete_from_current_directory'])
+        set_test = set(destination.delete_from_current_directory)
+        assert set_data == set_test
+
+
+    ######################
+    ###  Test cases
+    ######################
+    def test_real_case_scenario_1(self, load_dataset):
+        # In directory there is no duplicates. Delete 31 repeating files
+        # Old implementation passed in 154.49s (0:02:34)
+        loaded_dataset = load_dataset.get('test_real_case_scenario_1')
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+        pass
+
+    def test_real_case_scenario_2(self, load_dataset):
+        # In directory there is no duplicates. No files to delete
+        # Old implementation passed in 1.32s
+        loaded_dataset = load_dataset.get('test_real_case_scenario_2')
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+        pass
 
 def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose, no_action):
+    SAVE_PROCESSING_DATA = False
+    save_dict = {}
     for d in destinations:
         for s in sources:
+            curr_scan_dict = {}
             # Source
             if verbose == True:
                 print("Directory path: {}".format(s))
@@ -267,6 +357,15 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
                 if verbose == True:
                     destination.print_prepared_to_delete()
                 destination.delete_prepared_files()
+
+            if SAVE_PROCESSING_DATA:
+                curr_scan_dict.update({'s':s, 'd':d, 'delete_files':delete_files, 'skip_duplicates':skip_duplicates, 'verbose':verbose, 'no_action':no_action })
+                curr_scan_dict['source.scanned_files_list'] = source.scanned_files_list
+                curr_scan_dict['destination.delete_from_current_directory'] = destination.delete_from_current_directory
+                curr_scan_dict['destination.scanned_files_list'] = destination.scanned_files_list
+                save_dict['{}{}'.format(s,d)] = curr_scan_dict
+    if SAVE_PROCESSING_DATA:
+        TestDirectoryStructure.save_dict_to_json(save_dict)
 
 
 def parse_and_execute_cli():    
