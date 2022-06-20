@@ -188,6 +188,10 @@ class BaseWebdriver:
     def find_elements(self, find_by, find_content):
         return self.driver.find_elements(find_by, find_content)
 
+    def select_element_by_value(self, find_by, find_content, value):
+        select = Select(self.find_element(find_by, find_content))
+        select.select_by_value(str(value))
+
 class StooqWebdriver:
     URL_INSTRUMENT = 'https://stooq.pl/q/m/?s={}' # next short name of instrument e.g. zwc
     SHARE_PRICE_VALUE_COUNTRY_SUFFIX = '.PL'
