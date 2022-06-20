@@ -115,8 +115,10 @@ class DirectoryStructure:
         self.ignored_files = []
         self.duplicated_files = Duplicates()
         self.delete_from_current_directory = []
-        self.root_directory = root_directory
+        self.root_directory_path = root_directory
         self.skip_duplicates = skip_duplicates
+        self.scanned_files_list = None
+        self.prepare_nested_file_paths_list()
 
     def classify_file(self, full_file_path):
         if not (self.skip_duplicates and \
@@ -137,12 +139,13 @@ class DirectoryStructure:
                 self.trusted_files.remove(d)
                 logger.info('classify_file - File found as duplicate, file removed from self.trusted_files - processing file: {}'.format(full_file_path))
 
-    def scan_directory(self, full_file_path=None):
-        if full_file_path is None:
-            full_file_path = self.root_directory
-        result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
-        logger.info('scan_directory {} - Number of files found {}'.format(full_file_path, len(result)))
-        [self.classify_file(file_path) for file_path in tqdm.tqdm(result, desc="Scan directory")]
+    def prepare_nested_file_paths_list(self):
+        self.scanned_files_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.root_directory_path) for f in filenames]
+
+    def scan_directory(self):
+        assert not self.scanned_files_list is None
+        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.scanned_files_list)))
+        [self.classify_file(file_path) for file_path in tqdm.tqdm(self.scanned_files_list, desc="Scan directory")]
 
     def classify_file_for_export(self, full_file_path):
         if not (self.find_duplicates_in_current_directory(full_file_path) \
@@ -162,7 +165,7 @@ class DirectoryStructure:
 
     def scan_directory_for_export(self, full_file_path=None):
         if full_file_path is None:
-            full_file_path = self.root_directory
+            full_file_path = self.root_directory_path
         if self.skip_duplicates:
             pass
         else:
@@ -171,7 +174,7 @@ class DirectoryStructure:
 
     def export_sorted_to_destination(self, destination_path):
         for export_source_path in tqdm.tqdm(self.trusted_files):
-            export_relative_path = export_source_path.replace(self.root_directory, '')
+            export_relative_path = export_source_path.replace(self.root_directory_path, '')
             export_destination_path = destination_path + export_relative_path
             os.makedirs(os.path.dirname(export_destination_path), exist_ok=True)
             if not os.path.isfile(export_destination_path):
@@ -375,4 +378,5 @@ def parse_and_execute_cli():
         print("To activate \"no_action\" or \"verbose\" source and destination should be set")
 
 
-parse_and_execute_cli()
+if __name__=='__main__':
+    parse_and_execute_cli()
