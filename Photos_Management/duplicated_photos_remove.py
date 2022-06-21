@@ -236,7 +236,7 @@ class DirectoryStructure:
             logger.info(json_log)
 
 class TestDirectoryStructure:
-    DATASET_FOR_TESTS_PATH = 'Photos_Management\\test_duplicates_dataset.json'
+    DATASET_FOR_TESTS_PATH = 'PythonPrivate\\Photos_Management\\test_duplicates_dataset.json'
 
     # run from command line
     # python -m pytest Photos_Management\duplicated_photos_remove.py::TestDirectoryStructure
