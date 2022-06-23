@@ -374,70 +374,70 @@ class TestDirectoryStructure:
 
     def test_real_case_scenario_3(self):
         # In directory there is no duplicates. No files to delete. Source files: 20883. Destination files: 835.
-        # Old implementation passed in xxxx
+        # Old implementation passed in 85.71s (0:01:25)
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_4(self):
         # In directory there is 9 duplicates. No files to delete. Source files: 168. Destination files: 1178.
-        # Old implementation passed in xxxxx
+        # Old implementation passed in 2.08s
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_5(self):
         # In directory there is 1 duplicates. No files to delete. skip_duplicates=True
-        # Old implementation passed in xxxxxx
+        # Old implementation passed in 1.72s
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_6(self):
         # In directory there is 1 duplicates. No files to delete
-        # Old implementation passed in xxxxx
+        # Old implementation passed in 0.50s
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_7(self):
         # In directory there is 6 duplicates. 754 files to delete
-        # Old implementation passed in xxxxx
+        # Old implementation passed in 93.27s (0:01:33)
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_8(self):
         # In directory there is 6 duplicates. No files to delete
-        # Old implementation passed in xxxxx
+        # Old implementation passed in 2.23s
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_9(self):
         # In directory there is 9 duplicates. 751 files to delete. skip_duplicates=True
-        # Old implementation passed in xxx
+        # Old implementation passed in 923.46s (0:15:23)
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_10(self):
         # In directory there is 9 duplicates. No files to delete. skip_duplicates=True
-        # Old implementation passed in xxxxxxx
+        # Old implementation passed in 3.47s
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_11(self):
         # In directory there is 9 duplicates. 757 files to delete
-        # Old implementation passed in xxxx
+        # Old implementation passed in 83.20s (0:01:23)
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
 
     def test_real_case_scenario_12(self):
         # In directory there is 9 duplicates. No files to delete
-        # Old implementation passed in xxxx
+        # Old implementation passed in 3.21s
         method_name = inspect.stack()[0][3]
         loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
