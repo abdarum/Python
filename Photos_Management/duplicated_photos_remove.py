@@ -12,6 +12,7 @@ import tqdm
 import json_logging, logging, datetime
 import json
 import pytest
+import inspect
 
 source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source"
 destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source_helper"
@@ -107,7 +108,9 @@ class Duplicates:
         print("\n\n***********************\n****   DUPLICATES  ****\n***********************")
         for duplicate_item in self.list_of_duplicate_items:
             duplicate_item.print_duplicate_item()
-            
+    
+    def get_duplicates_filenames(self):
+        return [duplicate_item.get_name() for duplicate_item in self.list_of_duplicate_items]
             
 class DirectoryStructure:
     def __init__(self, root_directory=None, skip_duplicates=True):
@@ -271,7 +274,6 @@ class TestDirectoryStructure:
             with open(file_path, 'w') as f:
                 print(str_to_print, file=f)
     
-    @pytest.fixture
     def load_dataset(self):
         data = None
         file_path = os.path.abspath(os.path.join(os.getcwd(), self.DATASET_FOR_TESTS_PATH))
@@ -280,10 +282,58 @@ class TestDirectoryStructure:
         f.close()
         return data
 
+    def load_dataset_section(self, method_name):
+        data = self.load_dataset()
+        section_data = data.get(method_name)
+        section_data['method_name'] = method_name
+        return section_data
+
+    def convert_paths_list_to_filenames_list(self, data_list):
+        return [os.path.split(path)[1] for path in data_list]
+        
+    def find_duplicates_at_paths_list(self, data_list):
+        filenames_list = self.convert_paths_list_to_filenames_list(data_list)
+        duplicates = list({x for x in filenames_list if filenames_list.count(x) > 1})
+        duplicates = [item for item in duplicates if True in [item.endswith(extension) for extension in TRUSTED_EXTENSIONS]]
+        return duplicates
+
+    def print_saved_preset_data(self, data):
+        print('\n\n*****   Preset data summary   *****')
+
+        method_name = data.get('method_name')
+        print('\tpreset: {}'.format(method_name))
+
+        d_scanned_files_list = data.get('destination.scanned_files_list')
+        d_scanned_files_list_len = len(d_scanned_files_list)
+        d_scanned_files_list_dup = self.find_duplicates_at_paths_list(d_scanned_files_list)
+        print('Destination files: {}. Destination duplicates({}) {}.'.format(d_scanned_files_list_len, len(d_scanned_files_list_dup), d_scanned_files_list_dup))
+
+        s_scanned_files_list = data.get('source.scanned_files_list')
+        s_scanned_files_list_len = len(s_scanned_files_list)
+        s_scanned_files_list_dup = self.find_duplicates_at_paths_list(s_scanned_files_list)
+        print('Source files: {}. Source duplicates({}) {}.'.format(s_scanned_files_list_len, len(s_scanned_files_list_dup), s_scanned_files_list_dup))
+
+        print('') #separator
+
+        d_delete_from_current_directory = data.get('destination.delete_from_current_directory')
+        d_delete_from_current_directory_len = len(d_delete_from_current_directory)
+        print('{} \t files will be deleted from destination dir'.format(d_delete_from_current_directory_len))
+
+        print('') #separator
+
+        d_duplicated_files = data.get('destination.duplicated_files.get_duplicates_filenames()')
+        print('Processed duplicates at destination: {}'.format(d_duplicated_files))
+
+        skip_duplicates = data.get('skip_duplicates')
+        print('Skip duplicates: {}'.format(skip_duplicates))
+        print('*****   Preset data summary   *****\n\n')
+
+
     def compare_execution_data_with_saved_preset(self, data):
         # destination.delete_from_current_directory list will be compared with saved list from attached data
         #   Files won't be deleted from pc
         #   data = {'s': '\\\\online_pc\\IMGS', 'd': 'C:\\local_pc\\IMGS', 'delete_files': true, 'skip_duplicates': false, 'verbose': true, 'no_action': true, 'source.scanned_files_list': [], 'destination.delete_from_current_directory': [], 'destination.scanned_files_list': []}
+        self.print_saved_preset_data(data)
         skip_duplicates = data.get('skip_duplicates')
         s = data.get('s')
         d = data.get('d')
@@ -307,20 +357,91 @@ class TestDirectoryStructure:
 
     ######################
     ###  Test cases
-    ######################
-    def test_real_case_scenario_1(self, load_dataset):
+    #######################
+    def test_real_case_scenario_1(self):
         # In directory there is no duplicates. Delete 31 repeating files
         # Old implementation passed in 154.49s (0:02:34)
-        loaded_dataset = load_dataset.get('test_real_case_scenario_1')
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
-        pass
 
-    def test_real_case_scenario_2(self, load_dataset):
+    def test_real_case_scenario_2(self):
         # In directory there is no duplicates. No files to delete
         # Old implementation passed in 1.32s
-        loaded_dataset = load_dataset.get('test_real_case_scenario_2')
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
         self.compare_execution_data_with_saved_preset(loaded_dataset)
-        pass
+
+    def test_real_case_scenario_3(self):
+        # In directory there is no duplicates. No files to delete. Source files: 20883. Destination files: 835.
+        # Old implementation passed in xxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_4(self):
+        # In directory there is 9 duplicates. No files to delete. Source files: 168. Destination files: 1178.
+        # Old implementation passed in xxxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_5(self):
+        # In directory there is 1 duplicates. No files to delete. skip_duplicates=True
+        # Old implementation passed in xxxxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_6(self):
+        # In directory there is 1 duplicates. No files to delete
+        # Old implementation passed in xxxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_7(self):
+        # In directory there is 6 duplicates. 754 files to delete
+        # Old implementation passed in xxxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_8(self):
+        # In directory there is 6 duplicates. No files to delete
+        # Old implementation passed in xxxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_9(self):
+        # In directory there is 9 duplicates. 751 files to delete. skip_duplicates=True
+        # Old implementation passed in xxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_10(self):
+        # In directory there is 9 duplicates. No files to delete. skip_duplicates=True
+        # Old implementation passed in xxxxxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_11(self):
+        # In directory there is 9 duplicates. 757 files to delete
+        # Old implementation passed in xxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
+    def test_real_case_scenario_12(self):
+        # In directory there is 9 duplicates. No files to delete
+        # Old implementation passed in xxxx
+        method_name = inspect.stack()[0][3]
+        loaded_dataset = self.load_dataset_section(method_name)
+        self.compare_execution_data_with_saved_preset(loaded_dataset)
+
 
 def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, verbose, no_action):
     SAVE_PROCESSING_DATA = False
@@ -361,8 +482,10 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
             if SAVE_PROCESSING_DATA:
                 curr_scan_dict.update({'s':s, 'd':d, 'delete_files':delete_files, 'skip_duplicates':skip_duplicates, 'verbose':verbose, 'no_action':no_action })
                 curr_scan_dict['source.scanned_files_list'] = source.scanned_files_list
+                curr_scan_dict['source.duplicated_files.get_duplicates_filenames()'] = source.duplicated_files.get_duplicates_filenames()
                 curr_scan_dict['destination.delete_from_current_directory'] = destination.delete_from_current_directory
                 curr_scan_dict['destination.scanned_files_list'] = destination.scanned_files_list
+                curr_scan_dict['destination.duplicated_files.get_duplicates_filenames()'] = destination.duplicated_files.get_duplicates_filenames()
                 save_dict['{}{}'.format(s,d)] = curr_scan_dict
     if SAVE_PROCESSING_DATA:
         TestDirectoryStructure.save_dict_to_json(save_dict)
