@@ -113,6 +113,89 @@ class Duplicates:
         return [duplicate_item.get_name() for duplicate_item in self.list_of_duplicate_items]
             
 class DirectoryStructure:
+    """A class used to store and manage files in directory"""
+    class FileProperties:
+        """A class used to store file properties"""
+        def __init_structures(self):
+            self.__sources_dict = {}
+            self.filename = None
+
+        def __init__(self, path):
+            self.__init_structures()
+            if path:
+                self.add_path(path)
+        
+        def __get_first_dir_path(self):
+            dir_path = str(self.get_dir_paths()[0])
+            return dir_path
+
+        def add_path(self, path):
+            """Add path to current file properties object"""
+            filename = os.path.split(path)[1]
+            dir_path = os.path.split(path)[0]
+            if self.filename is None:
+                self.filename = filename
+            assert filename == self.filename, "Filename must be the same for all paths"
+            self.__sources_dict[dir_path] = {}
+
+        def extend(self, ext_file_prop):
+            """
+            Extend current object based on external FileProperties object
+
+            Add new paths of filename
+
+            Parameters
+            ----------
+            ext_file_prop : FileProperties
+                external FileProperties object
+            """
+            ext_file_path = ext_file_prop.get_first_file_path()
+            self.add_path(ext_file_path)
+        
+        def get_file_extension(self):
+            extension = os.path.splitext(self.filename)[1]
+            return extension
+
+        def get_filename(self):
+            return self.filename
+
+        def get_first_file_path(self):
+            """Get full file path of file used to init object"""
+            dir_path = self.__get_first_dir_path()
+            filename = self.get_filename()
+            full_path = os.path.join(dir_path, filename)
+            return full_path
+
+        def get_file_paths_list(self):
+            """Get list of full file paths"""
+            file_paths_list = self.get_dir_paths()
+            filename = self.get_filename()
+            full_path_list = [os.path.join(dir_path, filename) for dir_path in file_paths_list]
+            return full_path_list
+
+        def get_dir_paths(self):
+            return list(self.__sources_dict.keys())
+
+    def __init__(self):
+        self.__files_map_dict = {}
+
+    def get_stored_filenames(self):
+        """Get keys of filenames stored in class"""
+        return self.__files_map_dict.keys()
+
+    def get_file_property(self, filename_key):
+        return self.__files_map_dict.get(filename_key)
+
+    def add_file_path(self, file_path):
+        """Add add file path to directory structure(update existing or add new)"""
+        file_properties = DirectoryStructure.FileProperties(file_path)
+        if file_properties.get_filename() in self.get_stored_filenames():
+            self.__files_map_dict.get(file_properties.get_filename()).extend(file_properties)
+        else:
+            self.__files_map_dict[file_properties.get_filename()] = file_properties
+        
+
+class DuplicatesRemover:
     def __init__(self, root_directory=None, skip_duplicates=True):
         self.found_not_processed_files = []
         self.trusted_files = []
@@ -122,6 +205,7 @@ class DirectoryStructure:
         self.root_directory_path = root_directory
         self.skip_duplicates = skip_duplicates
         self.scanned_files_list = None
+        self.directory_structure = DirectoryStructure()
         self.prepare_nested_file_paths_list()
 
     def classify_file(self, full_file_path):
@@ -149,7 +233,7 @@ class DirectoryStructure:
     def scan_directory(self):
         assert not self.scanned_files_list is None
         logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.scanned_files_list)))
-        [self.classify_file(file_path) for file_path in tqdm.tqdm(self.scanned_files_list, desc="Scan directory")]
+        [self.directory_structure.add_file_path(file_path) for file_path in tqdm.tqdm(self.scanned_files_list, desc="Scan directory")]
 
     def classify_file_for_export(self, full_file_path):
         if not (self.find_duplicates_in_current_directory(full_file_path) \
@@ -238,16 +322,16 @@ class DirectoryStructure:
             json_log = "print_prepared_to_delete - {}".format(log_msg.replace('\n', ' '))
             logger.info(json_log)
 
-class TestDirectoryStructure:
+class TestDuplicatesRemover:
     DATASET_FOR_TESTS_PATH = 'PythonPrivate\\Photos_Management\\test_duplicates_dataset.json'
 
     # run from command line
-    # python -m pytest Photos_Management\duplicated_photos_remove.py::TestDirectoryStructure
+    # python -m pytest Photos_Management\duplicated_photos_remove.py::TestDuplicatesRemover
     # 
     # run from python script
-    # retcode = pytest.main(["<X:\\abs_repo_path>\\Photos_Management\\duplicated_photos_remove.py::TestDirectoryStructure"])
+    # retcode = pytest.main(["<X:\\abs_repo_path>\\Photos_Management\\duplicated_photos_remove.py::TestDuplicatesRemover"])
     #     with console output add -s parameter
-    #     retcode = pytest.main(["<X:\\abs_repo_path>\\Photos_Management\\duplicated_photos_remove.py::TestDirectoryStructure", "-s"])
+    #     retcode = pytest.main(["<X:\\abs_repo_path>\\Photos_Management\\duplicated_photos_remove.py::TestDuplicatesRemover", "-s"])
 
     ######################
     ###  Tools
@@ -339,12 +423,12 @@ class TestDirectoryStructure:
         d = data.get('d')
 
         # source
-        source = DirectoryStructure(s, skip_duplicates=skip_duplicates)
+        source = DuplicatesRemover(s, skip_duplicates=skip_duplicates)
         source.scanned_files_list = data['source.scanned_files_list']
         source.scan_directory()
 
         # destination
-        destination = DirectoryStructure(d, skip_duplicates=skip_duplicates)
+        destination = DuplicatesRemover(d, skip_duplicates=skip_duplicates)
         destination.scanned_files_list = data['destination.scanned_files_list']
         destination.scan_directory()
 
@@ -452,12 +536,12 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
             # Source
             if verbose == True:
                 print("Directory path: {}".format(s))
-            source = DirectoryStructure(s, skip_duplicates=skip_duplicates)
+            source = DuplicatesRemover(s, skip_duplicates=skip_duplicates)
             source.scan_directory()
             # Destination
             if verbose == True:
                 print("Directory path: {}".format(d))
-            destination = DirectoryStructure(d, skip_duplicates=skip_duplicates)
+            destination = DuplicatesRemover(d, skip_duplicates=skip_duplicates)
             destination.scan_directory()
 
             if verbose == True:
@@ -488,7 +572,7 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
                 curr_scan_dict['destination.duplicated_files.get_duplicates_filenames()'] = destination.duplicated_files.get_duplicates_filenames()
                 save_dict['{}{}'.format(s,d)] = curr_scan_dict
     if SAVE_PROCESSING_DATA:
-        TestDirectoryStructure.save_dict_to_json(save_dict)
+        TestDuplicatesRemover.save_dict_to_json(save_dict)
 
 
 def parse_and_execute_cli():    
@@ -548,7 +632,7 @@ def parse_and_execute_cli():
         # python.exe C:\GitHub\Python\duplicated_photos_remove.py -e -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
         if (args['source'] != None) and (args['destination'] != None):
             source_path = args['source']
-            source = DirectoryStructure(source_path, skip_duplicates=False)
+            source = DuplicatesRemover(source_path, skip_duplicates=False)
             source.scan_directory_for_export()
             
             destination_path = args['destination']
@@ -568,7 +652,7 @@ def parse_and_execute_cli():
 
     if args['source'] != None:
         source_path = args['source']
-        source = DirectoryStructure(source_path, skip_duplicates=args['accept_duplicates'])
+        source = DuplicatesRemover(source_path, skip_duplicates=args['accept_duplicates'])
         source.scan_directory()
         if args['verbose'] == True:
             print("\n\tSource\n")
@@ -578,7 +662,7 @@ def parse_and_execute_cli():
 
     if args['destination'] != None:
         destination_path = args['destination']
-        destination = DirectoryStructure(destination_path, skip_duplicates=args['accept_duplicates'])
+        destination = DuplicatesRemover(destination_path, skip_duplicates=args['accept_duplicates'])
         destination.scan_directory()
         if args['verbose'] == True:
             print("\n\tDestination\n")
