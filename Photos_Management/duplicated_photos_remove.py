@@ -208,11 +208,56 @@ class DirectoryStructure:
             item = self.get_file_property(file_key)
             yield item
 
+class FilesManager:
+    def __init__(self, root_directory=None):
+        self.root_directory_path = root_directory
+        self.nested_files_list = None
+        self.directory_structure = DirectoryStructure()
+        self.prepare_nested_file_paths_list()
 
-class DuplicatesRemover:
+    def prepare_nested_file_paths_list(self):
+        self.nested_files_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.root_directory_path) for f in filenames]
+
+    def get_directory_structure(self):
+        return self.directory_structure
+
+    def scan_directory(self):
+        assert not self.nested_files_list is None
+        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.nested_files_list)))
+        [self.directory_structure.add_file_path(file_path) for file_path in tqdm.tqdm(self.nested_files_list, desc="Scan directory")]
+
+    def print_duplicates(self):
+        item: DirectoryStructure.FileProperties = None
+        print("\n\n***********************\n****   DUPLICATES  ****\n***********************")
+        for item in self.directory_structure.iterate_files():
+            if item.file_in_multiple_directories():
+                print("Duplicate  - Filename: {}\nPaths".format(item.get_filename()))
+                pprint.pprint(item.get_file_paths_list())
+                print("")
+
+    def print_ignored(self):
+        print("\n\n***********************\n****    IGNORED    ****\n***********************")
+        item: DirectoryStructure.FileProperties = None
+        for item in self.directory_structure.iterate_files():
+            if item.file_extensions_is_ignored():
+                log_msg = "IGNORED: File was ignored:\n{}\n".format(item.get_filename())
+                print(log_msg)
+                json_log = "print_ignored - {}".format(log_msg.replace('\n', ' '))
+                logger.info(json_log)
+
+    def print_warnings(self):
+        print("\n\n***********************\n****    WARNINGS   ****\n***********************")
+        item: DirectoryStructure.FileProperties = None
+        for item in self.directory_structure.iterate_files():
+            if (not item.file_extensions_is_ignored()) and (not item.file_extensions_is_trusted()):
+                log_msg = "Warning: File was not found:\n{}\n".format(item.get_filename())
+                print(log_msg)
+                json_log = "print_warnings - {}".format(log_msg.replace('\n', ' '))
+                logger.info(json_log)
+
+class DuplicatesRemover(FilesManager):
     def __init__(self, root_directory=None, skip_duplicates=True):
-        """
-        
+        """       
         Parameters
         ----------
         root_directory : str
@@ -221,19 +266,9 @@ class DuplicatesRemover:
             True - skip delete files with multiple sources(duplicates)
             False - delete all images(also duplicated files)
         """
-        self.found_not_processed_files = []
-        self.trusted_files = []
-        self.ignored_files = []
-        self.duplicated_files = Duplicates()
+        super(DuplicatesRemover, self).__init__(root_directory)
         self.delete_from_current_directory = []
-        self.root_directory_path = root_directory
         self.delete_duplicates = not bool(skip_duplicates)
-        self.nested_files_list = None
-        self.directory_structure = DirectoryStructure()
-        self.prepare_nested_file_paths_list()
-
-    def get_directory_structure(self):
-        return self.directory_structure
 
     def file_should_be_deleted(self, file_properties: DirectoryStructure.FileProperties, reference):
         """Return bool if file should be deleted"""
@@ -244,17 +279,31 @@ class DuplicatesRemover:
             if not item.file_in_multiple_directories() or self.delete_duplicates:
                 if item.file_extensions_is_trusted():
                     return True
-
         return False
 
-    def prepare_nested_file_paths_list(self):
-        self.nested_files_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.root_directory_path) for f in filenames]
+    def prepare_to_delete_existing_files(self, reference):
+        assert isinstance(reference, DuplicatesRemover), "reference must be a object of DuplicatesRemover class"
+        for item in tqdm.tqdm(self.directory_structure.iterate_files(), desc="Prepare to delete duplicates"):
+            if self.file_should_be_deleted(item, reference):
+                self.delete_from_current_directory.extend(item.get_file_paths_list())
+                logger.info("prepare_to_delete_existing_files - file('s) will be deleted: {}".format(item.get_file_paths_list()))
 
-    def scan_directory(self):
-        assert not self.nested_files_list is None
-        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.nested_files_list)))
-        [self.directory_structure.add_file_path(file_path) for file_path in tqdm.tqdm(self.nested_files_list, desc="Scan directory")]
+    def delete_prepared_files(self):
+        for f in self.delete_from_current_directory:
+            os.remove(f)
+            logger.info("delete_prepared_files - file was deleted: {}".format(f))
+        print("\n\n*************************\n**** DELETE COMPLETE ****\n*************************")
 
+    def print_prepared_to_delete(self):
+        print("\n\n***********************\n****    DELETE     ****\n***********************")
+        for f in self.delete_from_current_directory:
+            log_msg = "DELETE: File will be deleted:\n{}\n".format(f)
+            print(log_msg)
+            json_log = "print_prepared_to_delete - {}".format(log_msg.replace('\n', ' '))
+            logger.info(json_log)
+
+
+class CompressExporter(FilesManager):
     def classify_file_for_export(self, full_file_path):
         if not (self.find_duplicates_in_current_directory(full_file_path) \
             and self.delete_duplicates):    
@@ -271,15 +320,6 @@ class DuplicatesRemover:
             for d in duplicates:
                 self.trusted_files.remove(d)
 
-    def scan_directory_for_export(self, full_file_path=None):
-        if full_file_path is None:
-            full_file_path = self.root_directory_path
-        if self.delete_duplicates:
-            pass
-        else:
-            result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
-            [self.classify_file_for_export(file_path) for file_path in result]
-
     def export_sorted_to_destination(self, destination_path):
         for export_source_path in tqdm.tqdm(self.trusted_files):
             export_relative_path = export_source_path.replace(self.root_directory_path, '')
@@ -290,57 +330,14 @@ class DuplicatesRemover:
                 picture = Image.open(export_destination_path)
                 picture.save(export_destination_path,optimize=True,quality=30) 
 
-    def find_duplicates_in_current_directory(self, full_file_path):
-        if os.path.split(full_file_path)[1] in [os.path.split(f)[1] for f in self.trusted_files]:
-            if self.duplicated_files.duplicate_exist_in_base([full_file_path]):
-                self.duplicated_files.add_to_existing_duplicate([full_file_path])
-            else:
-                duplicates = [f for f in self.trusted_files if (os.path.split(f)[1] == os.path.split(full_file_path)[1])]
-                duplicates.append(full_file_path)
-                self.duplicated_files.create_duplicate(duplicates)
-            return True
-        return False
-
-    def prepare_to_delete_existing_files(self, reference):
-        assert isinstance(reference, DuplicatesRemover), "reference must be a object of DuplicatesRemover class"
-        for item in tqdm.tqdm(self.directory_structure.iterate_files(), desc="Prepare to delete duplicates"):
-            if self.file_should_be_deleted(item, reference):
-                self.delete_from_current_directory.extend(item.get_file_paths_list())
-                logger.info("prepare_to_delete_existing_files - file('s) will be deleted: {}".format(item.get_file_paths_list()))
-
-    def delete_prepared_files(self):
-        for f in self.delete_from_current_directory:
-            os.remove(f)
-            logger.info("delete_prepared_files - file was deleted: {}".format(f))
-        print("\n\n*************************\n**** DELETE COMPLETE ****\n*************************")
-
-
-    def print_warnings(self):
-        print("\n\n***********************\n****    WARNINGS   ****\n***********************")
-        for f in self.found_not_processed_files:
-            log_msg = "Warning: File was not found:\n{}\n".format(f)
-            print(log_msg)
-            json_log = "print_warnings - {}".format(log_msg.replace('\n', ' '))
-            logger.info(json_log)
-
-    def print_ignored(self):
-        print("\n\n***********************\n****    IGNORED    ****\n***********************")
-        for f in self.ignored_files:
-            log_msg = "IGNORED: File was ignored:\n{}\n".format(f)
-            print(log_msg)
-            json_log = "print_ignored - {}".format(log_msg.replace('\n', ' '))
-            logger.info(json_log)
-
-    def print_duplicates(self):
-        self.duplicated_files.print_duplicates()
-
-    def print_prepared_to_delete(self):
-        print("\n\n***********************\n****    DELETE     ****\n***********************")
-        for f in self.delete_from_current_directory:
-            log_msg = "DELETE: File will be deleted:\n{}\n".format(f)
-            print(log_msg)
-            json_log = "print_prepared_to_delete - {}".format(log_msg.replace('\n', ' '))
-            logger.info(json_log)
+    def scan_directory_for_export(self, full_file_path=None):
+        if full_file_path is None:
+            full_file_path = self.root_directory_path
+        if self.delete_duplicates:
+            pass
+        else:
+            result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
+            [self.classify_file_for_export(file_path) for file_path in result]
 
 class TestDuplicatesRemover:
     DATASET_FOR_TESTS_PATH = 'PythonPrivate\\Photos_Management\\test_duplicates_dataset.json'
@@ -652,7 +649,7 @@ def parse_and_execute_cli():
         # python.exe C:\GitHub\Python\duplicated_photos_remove.py -e -s C:\Kornel_Zdjecia\___Gallery_Gotowe_finalne\2020 -d C:\Kornel_Zdjecia\zz__inne_tmp\tmp_script
         if (args['source'] != None) and (args['destination'] != None):
             source_path = args['source']
-            source = DuplicatesRemover(source_path, skip_duplicates=False)
+            source = CompressExporter(source_path)
             source.scan_directory_for_export()
             
             destination_path = args['destination']
