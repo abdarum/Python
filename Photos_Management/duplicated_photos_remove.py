@@ -2,7 +2,7 @@ import os
 import pprint
 import sys
 import argparse
-import shutil 
+import shutil
 # image compress
 from PIL import Image
 import PIL
@@ -176,6 +176,15 @@ class DirectoryStructure:
         def get_dir_paths(self):
             return list(self.__sources_dict.keys())
 
+        def file_in_multiple_directories(self):
+            return len(self.get_dir_paths()) > 1
+        
+        def file_extensions_is_trusted(self):
+            return self.get_file_extension() in TRUSTED_EXTENSIONS
+        
+        def file_extensions_is_ignored(self):
+            return self.get_file_extension() in IGNORED_EXTENSIONS
+
     def __init__(self):
         self.__files_map_dict = {}
 
@@ -193,51 +202,62 @@ class DirectoryStructure:
             self.__files_map_dict.get(file_properties.get_filename()).extend(file_properties)
         else:
             self.__files_map_dict[file_properties.get_filename()] = file_properties
-        
+
+    def iterate_files(self):
+        for file_key in self.get_stored_filenames():
+            item = self.get_file_property(file_key)
+            yield item
+
 
 class DuplicatesRemover:
     def __init__(self, root_directory=None, skip_duplicates=True):
+        """
+        
+        Parameters
+        ----------
+        root_directory : str
+            path to root directory, where search should be executed
+        skip_duplicates : bool
+            True - skip delete files with multiple sources(duplicates)
+            False - delete all images(also duplicated files)
+        """
         self.found_not_processed_files = []
         self.trusted_files = []
         self.ignored_files = []
         self.duplicated_files = Duplicates()
         self.delete_from_current_directory = []
         self.root_directory_path = root_directory
-        self.skip_duplicates = skip_duplicates
-        self.scanned_files_list = None
+        self.delete_duplicates = not bool(skip_duplicates)
+        self.nested_files_list = None
         self.directory_structure = DirectoryStructure()
         self.prepare_nested_file_paths_list()
 
-    def classify_file(self, full_file_path):
-        if not (self.skip_duplicates and \
-                self.find_duplicates_in_current_directory(full_file_path) ):    
-            extension = os.path.splitext(full_file_path)[1]
-            if extension in TRUSTED_EXTENSIONS:
-                self.trusted_files.append(full_file_path)
-                logger.info('classify_file - File in TRUSTED_EXTENSIONS - processing file: {}'.format(full_file_path))
-            elif extension in IGNORED_EXTENSIONS:
-                self.ignored_files.append(full_file_path)
-                logger.info('classify_file - File in IGNORED_EXTENSIONS - processing file: {}'.format(full_file_path))
-            else:
-                self.found_not_processed_files.append(full_file_path)
-                logger.info('classify_file - Extension not recognized - processing file: {}'.format(full_file_path))
-        else:
-            duplicates = [f for f in self.trusted_files if (os.path.split(f)[1] == os.path.split(full_file_path)[1])]
-            for d in duplicates:
-                self.trusted_files.remove(d)
-                logger.info('classify_file - File found as duplicate, file removed from self.trusted_files - processing file: {}'.format(full_file_path))
+    def get_directory_structure(self):
+        return self.directory_structure
+
+    def file_should_be_deleted(self, file_properties: DirectoryStructure.FileProperties, reference):
+        """Return bool if file should be deleted"""
+        item = file_properties
+        # check if item is stored in reference DuplicatesRemover object
+        if item.get_filename() in reference.get_directory_structure().get_stored_filenames():
+            # check if file has duplicates or delete duplicated
+            if not item.file_in_multiple_directories() or self.delete_duplicates:
+                if item.file_extensions_is_trusted():
+                    return True
+
+        return False
 
     def prepare_nested_file_paths_list(self):
-        self.scanned_files_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.root_directory_path) for f in filenames]
+        self.nested_files_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.root_directory_path) for f in filenames]
 
     def scan_directory(self):
-        assert not self.scanned_files_list is None
-        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.scanned_files_list)))
-        [self.directory_structure.add_file_path(file_path) for file_path in tqdm.tqdm(self.scanned_files_list, desc="Scan directory")]
+        assert not self.nested_files_list is None
+        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.nested_files_list)))
+        [self.directory_structure.add_file_path(file_path) for file_path in tqdm.tqdm(self.nested_files_list, desc="Scan directory")]
 
     def classify_file_for_export(self, full_file_path):
         if not (self.find_duplicates_in_current_directory(full_file_path) \
-            and self.skip_duplicates):    
+            and self.delete_duplicates):    
             extension = os.path.splitext(full_file_path)[1]
             excluded_dir = []
 
@@ -254,7 +274,7 @@ class DuplicatesRemover:
     def scan_directory_for_export(self, full_file_path=None):
         if full_file_path is None:
             full_file_path = self.root_directory_path
-        if self.skip_duplicates:
+        if self.delete_duplicates:
             pass
         else:
             result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
@@ -282,11 +302,11 @@ class DuplicatesRemover:
         return False
 
     def prepare_to_delete_existing_files(self, reference):
-        assert isinstance(reference, DirectoryStructure), "reference must be a object of DirectoryStructure class"
-        for trusted in tqdm.tqdm(self.trusted_files, desc="Prepare to delete duplicates"):
-            if os.path.split(trusted)[1] in [os.path.split(f)[1] for f in reference.trusted_files]:
-                self.delete_from_current_directory.append(trusted)
-                logger.info("prepare_to_delete_existing_files - file will be deleted: {}".format(trusted))
+        assert isinstance(reference, DuplicatesRemover), "reference must be a object of DuplicatesRemover class"
+        for item in tqdm.tqdm(self.directory_structure.iterate_files(), desc="Prepare to delete duplicates"):
+            if self.file_should_be_deleted(item, reference):
+                self.delete_from_current_directory.extend(item.get_file_paths_list())
+                logger.info("prepare_to_delete_existing_files - file('s) will be deleted: {}".format(item.get_file_paths_list()))
 
     def delete_prepared_files(self):
         for f in self.delete_from_current_directory:
@@ -387,12 +407,12 @@ class TestDuplicatesRemover:
         method_name = data.get('method_name')
         print('\tpreset: {}'.format(method_name))
 
-        d_scanned_files_list = data.get('destination.scanned_files_list')
+        d_scanned_files_list = data.get('destination.nested_files_list')
         d_scanned_files_list_len = len(d_scanned_files_list)
         d_scanned_files_list_dup = self.find_duplicates_at_paths_list(d_scanned_files_list)
         print('Destination files: {}. Destination duplicates({}) {}.'.format(d_scanned_files_list_len, len(d_scanned_files_list_dup), d_scanned_files_list_dup))
 
-        s_scanned_files_list = data.get('source.scanned_files_list')
+        s_scanned_files_list = data.get('source.nested_files_list')
         s_scanned_files_list_len = len(s_scanned_files_list)
         s_scanned_files_list_dup = self.find_duplicates_at_paths_list(s_scanned_files_list)
         print('Source files: {}. Source duplicates({}) {}.'.format(s_scanned_files_list_len, len(s_scanned_files_list_dup), s_scanned_files_list_dup))
@@ -416,7 +436,7 @@ class TestDuplicatesRemover:
     def compare_execution_data_with_saved_preset(self, data):
         # destination.delete_from_current_directory list will be compared with saved list from attached data
         #   Files won't be deleted from pc
-        #   data = {'s': '\\\\online_pc\\IMGS', 'd': 'C:\\local_pc\\IMGS', 'delete_files': true, 'skip_duplicates': false, 'verbose': true, 'no_action': true, 'source.scanned_files_list': [], 'destination.delete_from_current_directory': [], 'destination.scanned_files_list': []}
+        #   data = {'s': '\\\\online_pc\\IMGS', 'd': 'C:\\local_pc\\IMGS', 'delete_files': true, 'skip_duplicates': false, 'verbose': true, 'no_action': true, 'source.nested_files_list': [], 'destination.delete_from_current_directory': [], 'destination.nested_files_list': []}
         self.print_saved_preset_data(data)
         skip_duplicates = data.get('skip_duplicates')
         s = data.get('s')
@@ -424,12 +444,12 @@ class TestDuplicatesRemover:
 
         # source
         source = DuplicatesRemover(s, skip_duplicates=skip_duplicates)
-        source.scanned_files_list = data['source.scanned_files_list']
+        source.nested_files_list = data['source.nested_files_list']
         source.scan_directory()
 
         # destination
         destination = DuplicatesRemover(d, skip_duplicates=skip_duplicates)
-        destination.scanned_files_list = data['destination.scanned_files_list']
+        destination.nested_files_list = data['destination.nested_files_list']
         destination.scan_directory()
 
         destination.prepare_to_delete_existing_files(source)
@@ -565,10 +585,10 @@ def auto_scan_directories(sources, destinations, delete_files, skip_duplicates, 
 
             if SAVE_PROCESSING_DATA:
                 curr_scan_dict.update({'s':s, 'd':d, 'delete_files':delete_files, 'skip_duplicates':skip_duplicates, 'verbose':verbose, 'no_action':no_action })
-                curr_scan_dict['source.scanned_files_list'] = source.scanned_files_list
+                curr_scan_dict['source.nested_files_list'] = source.nested_files_list
                 curr_scan_dict['source.duplicated_files.get_duplicates_filenames()'] = source.duplicated_files.get_duplicates_filenames()
                 curr_scan_dict['destination.delete_from_current_directory'] = destination.delete_from_current_directory
-                curr_scan_dict['destination.scanned_files_list'] = destination.scanned_files_list
+                curr_scan_dict['destination.nested_files_list'] = destination.nested_files_list
                 curr_scan_dict['destination.duplicated_files.get_duplicates_filenames()'] = destination.duplicated_files.get_duplicates_filenames()
                 save_dict['{}{}'.format(s,d)] = curr_scan_dict
     if SAVE_PROCESSING_DATA:
