@@ -457,6 +457,8 @@ class TestDuplicatesRemover:
     ######################
     ###  Test cases
     #######################
+    # New implementation - 12 passed in 6.83s
+    
     def test_real_case_scenario_1(self):
         # In directory there is no duplicates. Delete 31 repeating files
         # Old implementation passed in 154.49s (0:02:34)
