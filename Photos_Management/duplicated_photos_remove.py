@@ -5,8 +5,6 @@ import argparse
 import shutil
 # image compress
 from PIL import Image
-import PIL
-import glob
 import tqdm
 # logging
 import json_logging, logging, datetime
@@ -14,24 +12,16 @@ import json
 import pytest
 import inspect
 
-source_path      = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source"
-destination_path = "C:\\Kornel_Zdjecia\\tmp_script_test_source_source_helper"
-skip_duplicates_global = True
-# skip_duplicates_global = False
-
-
-EXPORT_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG' ]
-EXPORT_EXCLUDE_DIR = ['Wszystkie', 'All']
-TRUSTED_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.jpeg', '.JPEG',
-                      '.mp4', '.MP4'
-                      ]
+EXPORT_EXTENSIONS = ['.jpg', '.png', '.jpeg' ]
+EXPORT_EXCLUDE_DIR = ['wszystkie', 'all']
+TRUSTED_EXTENSIONS = ['.jpg', '.png', '.jpeg', '.mp4']
 IGNORED_EXTENSIONS = ['.txt']
 
 file_datestamp_format = '%Y%m%d_%H%M%S'
 __init_datestamp = datetime.datetime.now().strftime(file_datestamp_format)
 gen_dir_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen", "logs"))
 
-# # logging gear
+## logging gear
 json_logging.init_non_web(enable_json=True)
 logger = logging.getLogger("duplicated_photos_remove-logger")
 logger.setLevel(logging.DEBUG)
@@ -47,71 +37,7 @@ print("Log stored at: {}".format(log_file_path))
 
 logger.info("Duplicated photos remove init. Logging timestamp: {}".format(__init_datestamp))
 
-class Duplicates:
-    class DuplicateItem:
-        def __init__(self, list_of_paths, name):
-            self.list_of_paths = list_of_paths
-            self.name = name
 
-        def get_name(self):
-            return self.name
-
-        def set_name(self, name):
-            self.name = name
-
-        def get_list_of_paths(self):
-            return self.list_of_paths
-
-        def set_list_of_paths(self, list_of_paths):
-            # 'list_of_paths' is list of paths containing duplicated files
-            self.list_of_paths = list_of_paths
-
-        def add_paths_to_list(self, list_of_paths):
-            # 'list_of_paths' is list of paths containing duplicated files
-            for path in list_of_paths: 
-                self.list_of_paths.append(path)
-
-        def print_duplicate_item(self):
-            print("Duplicate  - Filename: {}\nPaths".format(self.name))
-            pprint.pprint(self.list_of_paths)
-            print("")
-
-    def __init__(self):
-        self.list_of_duplicate_items = []
-
-    def create_duplicate(self, paths):
-        # 'paths' is list of paths containing duplicated files
-        name = os.path.split(paths[0])[1]
-        list_of_paths = []
-        for path in paths:
-            list_of_paths.append(os.path.split(path)[0])
-        
-        self.list_of_duplicate_items.append(self.DuplicateItem(list_of_paths, name))
-
-    def add_to_existing_duplicate(self, paths):
-        # 'paths' is list of paths containing duplicated files
-        #todo
-        for path in paths:
-            for i in self.list_of_duplicate_items:
-                if i.name == os.path.split(path)[1]:
-                    i.add_paths_to_list([os.path.split(path)[0]])
-
-    def duplicate_exist_in_base(self, paths):
-        # 'paths' is list of paths containing duplicated files
-        for path in paths:
-            for i in self.list_of_duplicate_items:
-                if i.name == os.path.split(path)[1]:
-                    return True
-        return False
-
-    def print_duplicates(self):
-        print("\n\n***********************\n****   DUPLICATES  ****\n***********************")
-        for duplicate_item in self.list_of_duplicate_items:
-            duplicate_item.print_duplicate_item()
-    
-    def get_duplicates_filenames(self):
-        return [duplicate_item.get_name() for duplicate_item in self.list_of_duplicate_items]
-            
 class DirectoryStructure:
     """A class used to store and manage files in directory"""
     class FileProperties:
@@ -152,6 +78,10 @@ class DirectoryStructure:
             ext_file_path = ext_file_prop.get_first_file_path()
             self.add_path(ext_file_path)
         
+        def export_list_of_single_path_obj(self):
+            paths = self.get_file_paths_list()
+            return [DirectoryStructure.FileProperties(path) for path in paths]
+        
         def get_file_extension(self):
             extension = os.path.splitext(self.filename)[1]
             return extension
@@ -180,10 +110,10 @@ class DirectoryStructure:
             return len(self.get_dir_paths()) > 1
         
         def file_extensions_is_trusted(self):
-            return self.get_file_extension() in TRUSTED_EXTENSIONS
+            return self.get_file_extension().lower() in TRUSTED_EXTENSIONS
         
         def file_extensions_is_ignored(self):
-            return self.get_file_extension() in IGNORED_EXTENSIONS
+            return self.get_file_extension().lower() in IGNORED_EXTENSIONS
 
     def __init__(self):
         self.__files_map_dict = {}
@@ -210,7 +140,7 @@ class DirectoryStructure:
 
 class FilesManager:
     def __init__(self, root_directory=None):
-        self.root_directory_path = root_directory
+        self.root_directory_path = root_directory.strip()
         self.nested_files_list = None
         self.directory_structure = DirectoryStructure()
         self.prepare_nested_file_paths_list()
@@ -304,40 +234,108 @@ class DuplicatesRemover(FilesManager):
 
 
 class CompressExporter(FilesManager):
-    def classify_file_for_export(self, full_file_path):
-        if not (self.find_duplicates_in_current_directory(full_file_path) \
-            and self.delete_duplicates):    
-            extension = os.path.splitext(full_file_path)[1]
-            excluded_dir = []
+    class ExportFileProperties:
+        def __init__(self, src_root_dir_path=None, dst_root_dir_path=None, file_properties=None):
+            assert isinstance(file_properties, DirectoryStructure.FileProperties)
+            self.src_root_dir_path = src_root_dir_path
+            self.dst_root_dir_path = dst_root_dir_path
+            self.src_file_properties = file_properties
 
-            [excluded_dir.append(excl) 
-            for excl in EXPORT_EXCLUDE_DIR 
-            if os.path.sep+excl+os.path.sep in os.path.splitext(full_file_path)[0]]
-            if len(excluded_dir) == 0 and extension in EXPORT_EXTENSIONS:
-                self.trusted_files.append(full_file_path)
-        else:
-            duplicates = [f for f in self.trusted_files if (os.path.split(f)[1] == os.path.split(full_file_path)[1])]
-            for d in duplicates:
-                self.trusted_files.remove(d)
+        def file_should_be_exported(self):
+            rel_path = self.get_file_rel_path()
+            dir_name = os.path.basename(os.path.dirname(rel_path))
 
-    def export_sorted_to_destination(self, destination_path):
-        for export_source_path in tqdm.tqdm(self.trusted_files):
-            export_relative_path = export_source_path.replace(self.root_directory_path, '')
-            export_destination_path = destination_path + export_relative_path
+            # If dir is in exclude dir list skip
+            if True in [dir == dir_name.lower() for dir in EXPORT_EXCLUDE_DIR]:
+                return False
+            
+            # If file extension fits, then file should be exported 
+            file_extension = self.src_file_properties.get_file_extension()
+            if True in [extension==file_extension.lower() for extension in EXPORT_EXTENSIONS]:
+                return True
+
+            return False
+
+        def get_file_rel_path(self):
+            full_path = self.get_src_file_path()
+            root_path = self.get_src_root_dir_path()
+            rel_path = os.path.relpath(full_path, root_path)
+            return rel_path
+
+        def get_src_root_dir_path(self):
+            return self.src_root_dir_path
+
+        def get_dst_root_dir_path(self):
+            return self.dst_root_dir_path
+
+        def get_src_file_path(self):
+            """Return full file path of export image in source directory"""
+            paths = self.src_file_properties.get_file_paths_list()
+            assert len(paths) == 1
+            export_src_path = paths[0]
+            assert export_src_path
+            return export_src_path
+
+        def get_dst_file_path(self):
+            """Return full file path of export image in destination directory"""
+            dst_root_path = self.get_dst_root_dir_path()
+            dst_rel_path = self.get_file_rel_path()
+            assert dst_root_path
+            assert dst_rel_path
+            export_dst_path = os.path.abspath(os.path.join(dst_root_path, dst_rel_path))
+            assert export_dst_path
+            return export_dst_path
+
+    def __init__(self, root_directory=None):
+        """       
+        Parameters
+        ----------
+        root_directory : str
+            path to root directory, where search should be executed
+        """
+        super(CompressExporter, self).__init__(root_directory)
+        self.export_root_path = None
+        self.export_files_list = []
+
+    def set_export_root_path(self, path):
+        path = path.strip()
+        self.export_root_path = os.path.abspath(path)
+        assert os.path.isdir(self.export_root_path), 'Export root has to be path to directory'
+
+    def export_images_to_destination(self):
+        """Export images at list to destination. Skip existing files(do not overwrite)"""
+        for exp_file_prop in tqdm.tqdm(self.export_files_list, desc="Export images"):
+            export_destination_path = exp_file_prop.get_dst_file_path()
             os.makedirs(os.path.dirname(export_destination_path), exist_ok=True)
+            # if file exist do not overwrite it
             if not os.path.isfile(export_destination_path):
-                shutil.copyfile(export_source_path, export_destination_path)
-                picture = Image.open(export_destination_path)
-                picture.save(export_destination_path,optimize=True,quality=30) 
+                self.export_image(exp_file_prop)
 
-    def scan_directory_for_export(self, full_file_path=None):
-        if full_file_path is None:
-            full_file_path = self.root_directory_path
-        if self.delete_duplicates:
-            pass
-        else:
-            result = [os.path.join(dp, f) for dp, dn, filenames in os.walk(full_file_path) for f in filenames]
-            [self.classify_file_for_export(file_path) for file_path in result]
+    def export_image(self, exp_file_prop: ExportFileProperties):
+        """Export and compress file"""
+        export_src_path = exp_file_prop.get_src_file_path()
+        export_dst_path = exp_file_prop.get_dst_file_path()
+        # compress parameters
+        optimize=True
+        quality=30
+        shutil.copyfile(export_src_path, export_dst_path)
+        self.compress_image(export_dst_path, optimize=optimize,quality=quality) 
+
+    def compress_image(self, img_path, optimize, quality):
+        picture = Image.open(img_path)
+        picture.save(img_path,optimize=optimize,quality=quality) 
+
+    def prepare_to_export_images(self):
+        for item in tqdm.tqdm(self.directory_structure.iterate_files(), desc="Prepare to export images"):
+            standalone_path_item_list = item.export_list_of_single_path_obj()
+            for standalone_item in standalone_path_item_list:
+                exp_file_prop = CompressExporter.ExportFileProperties(src_root_dir_path=self.root_directory_path, 
+                                                                        dst_root_dir_path=self.export_root_path, 
+                                                                        file_properties=standalone_item)
+                if exp_file_prop.file_should_be_exported():
+                    self.export_files_list.append(exp_file_prop)
+                    logger.info("prepare_to_export_images - file('s) will be exported: {}".format(exp_file_prop))
+        
 
 class TestDuplicatesRemover:
     DATASET_FOR_TESTS_PATH = 'PythonPrivate\\Photos_Management\\test_duplicates_dataset.json'
@@ -650,11 +648,13 @@ def parse_and_execute_cli():
         if (args['source'] != None) and (args['destination'] != None):
             source_path = args['source']
             source = CompressExporter(source_path)
-            source.scan_directory_for_export()
+            source.scan_directory()
             
             destination_path = args['destination']
+            source.set_export_root_path(destination_path)
 
-            source.export_sorted_to_destination(destination_path)
+            source.prepare_to_export_images()
+            source.export_images_to_destination()
 
             sys.exit(1)
         else:
