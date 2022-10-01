@@ -10,6 +10,7 @@ import tqdm
 import json_logging, logging, datetime
 import json
 import pytest
+import ftplib
 import inspect
 
 EXPORT_EXTENSIONS = ['.jpg', '.png', '.jpeg' ]
@@ -138,22 +139,156 @@ class DirectoryStructure:
             item = self.get_file_property(file_key)
             yield item
 
+class DirTreeManipulator:
+    """ Interface to find nested files and remove files"""
+    def __init__(self, root_directory_config):
+        self.root_directory_config_raw = root_directory_config
+    
+    @staticmethod
+    def get_dir_tree_obj(root_directory_config):
+        obj = DirTreeManipulatorOs(root_directory_config)
+        if obj.is_config_valid():
+            return obj
+        obj = DirTreeManipulatorFtp(root_directory_config)
+        if obj.is_config_valid():
+            return obj        
+        # Valid object has not been found
+        return None
+    
+    def is_config_valid(self):
+        return False
+    
+    def get_raw(self):
+        return self.root_directory_config_raw
+
+    def get_nested_file_paths(self):
+        return None
+
+    def delete_files_list(self, files_list, tqdm_desc, log_desc):
+        for f in tqdm.tqdm(files_list, desc=tqdm_desc):
+            self.delete_file(f)
+            logger.info(log_desc.format(f))
+    
+    def delete_file(self, file_path):
+        pass
+
+    def get_root_path(self):
+        return None
+
+class DirTreeManipulatorOs(DirTreeManipulator):
+    def is_config_valid(self):
+        if isinstance(self.root_directory_config_raw, dict):
+            return False
+        if not os.path.isdir(self.root_directory_config_raw):
+            return False
+        return True
+
+    def get_nested_file_paths(self):
+        return [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.get_root_path()) for f in filenames]
+
+    def delete_file(self, file_path):
+        os.remove(file_path)
+
+    def get_root_path(self):
+        if self.is_config_valid():
+            return self.root_directory_config_raw.strip()
+        return None
+
+class DirTreeManipulatorFtp(DirTreeManipulator):
+    FTP_SERVER_TYPE = 'ftp_server'
+    def is_config_valid(self):
+        if not isinstance(self.root_directory_config_raw, dict):
+            return False
+        if self.root_directory_config_raw.get('type', None) != self.FTP_SERVER_TYPE:
+            return False
+        return True
+
+    def get_nested_file_paths(self):
+        ftp_prefix = self._get_ftp_path_prefix()
+        root_path = self.get_root_path().replace(ftp_prefix, '')
+        nested_file_paths = []
+        self._login()
+        nested_file_paths = self.list_dir_recursive(root_path)
+        self._close()
+        nested_file_paths = [ftp_prefix + item for item in nested_file_paths]
+        return nested_file_paths
+
+    def delete_files_list(self, files_list, tqdm_desc, log_desc):
+        self._login()
+        super().delete_files_list(files_list, tqdm_desc, log_desc)
+        self._close()
+
+    def delete_file(self, file_path):
+        del_file = file_path.replace(self._get_ftp_path_prefix(), '')
+        self._get_ftp().delete(del_file)
+
+    def get_root_path(self):
+        return self._get_ftp_path_prefix() + self._get_root_path()
+
+    def list_dir_recursive(self, root_path):
+        if self._get_ftp() is None:
+            return None
+
+        root_path = os.path.normpath(root_path)
+        self._get_ftp().cwd(root_path)
+
+        file_paths = []
+        for name, facts in self._get_ftp().mlsd():
+            if facts.get('type') == 'dir':
+                dir_path = os.path.normpath(os.path.join(root_path, name))
+                file_paths.extend(self.list_dir_recursive(dir_path))
+            elif facts.get('type') == 'file':
+                file_path = os.path.normpath(os.path.join(root_path, name))
+                file_paths.append(file_path)
+        return file_paths
+
+    def _login(self):
+        self._ftp = ftplib.FTP()
+        self._ftp.connect(self._get_ftp_url(), self._get_ftp_port())
+        self._ftp.login(self._get_ftp_username(), self._get_ftp_password())
+
+    def _close(self):
+        self._ftp.close()
+        self._ftp = None
+
+    def _get_ftp(self):
+        return self._ftp
+
+    def _get_root_path(self):
+        return self.root_directory_config_raw.get('cwd', None)
+
+    def _get_ftp_url(self):
+        return self.root_directory_config_raw.get('url', None)
+
+    def _get_ftp_port(self):
+        return self.root_directory_config_raw.get('port', None)
+
+    def _get_ftp_username(self):
+        return self.root_directory_config_raw.get('username', None)
+
+    def _get_ftp_password(self):
+        return self.root_directory_config_raw.get('password', None)
+    
+    def _get_ftp_path_prefix(self):
+        prefix = 'ftp://{}@{}:{}'.format(self._get_ftp_url(), self._get_ftp_username(), self._get_ftp_port())
+        return prefix
+
 class FilesManager:
     def __init__(self, root_directory=None):
-        self.root_directory_path = root_directory.strip()
+        self.root_directory = DirTreeManipulator.get_dir_tree_obj(root_directory)
         self.nested_files_list = None
         self.directory_structure = DirectoryStructure()
         self.prepare_nested_file_paths_list()
 
     def prepare_nested_file_paths_list(self):
-        self.nested_files_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(self.root_directory_path) for f in filenames]
+        self.nested_files_list = self.root_directory.get_nested_file_paths()
 
     def get_directory_structure(self):
         return self.directory_structure
 
     def scan_directory(self):
         assert not self.nested_files_list is None
-        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory_path, len(self.nested_files_list)))
+        logger.info('scan_directory {} - Number of files found {}'.format(self.root_directory.get_root_path(), len(self.nested_files_list)))
         [self.directory_structure.add_file_path(file_path) for file_path in tqdm.tqdm(self.nested_files_list, desc="Scan directory")]
 
     def print_duplicates(self):
@@ -219,9 +354,9 @@ class DuplicatesRemover(FilesManager):
                 logger.info("prepare_to_delete_existing_files - file('s) will be deleted: {}".format(item.get_file_paths_list()))
 
     def delete_prepared_files(self):
-        for f in self.delete_from_current_directory:
-            os.remove(f)
-            logger.info("delete_prepared_files - file was deleted: {}".format(f))
+        log_desc = 'delete_prepared_files - file was deleted: {}'
+        tqdm_desc = 'Delete duplicates'
+        self.root_directory.delete_files_list(self.delete_from_current_directory, tqdm_desc, log_desc)
         print("\n\n*************************\n**** DELETE COMPLETE ****\n*************************")
 
     def print_prepared_to_delete(self):

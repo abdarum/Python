@@ -1,9 +1,21 @@
-
 {
-    "sources": ["\\\\networkpc\\image\\Camera", "C:\\image\\Camera"], 
-    "destinations": ["D:\\images"], 
-    "delete_files":true, 
-    "skip_duplicates":false,
-    "verbose":true,
-    "no_action":false
+    "sources": [
+        "\\\\networkpc\\image\\Camera",
+        "C:\\image\\Camera"
+    ],
+    "destinations": [
+        "D:\\images",
+        {
+            "type": "ftp_server",
+            "url": "192.168.xxx.xxx",
+            "port": 0,
+            "username": "xxxx",
+            "password": "xxxx",
+            "cwd": "/Images/path"
+        }
+    ],
+    "delete_files": true,
+    "skip_duplicates": false,
+    "verbose": true,
+    "no_action": false
 }

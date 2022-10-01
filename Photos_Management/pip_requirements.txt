@@ -1,3 +1,5 @@
 Pillow
 tqdm
 json_logging
+pytest
+
