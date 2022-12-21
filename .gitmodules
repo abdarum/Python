@@ -1,3 +1,6 @@
 [submodule "PythonPrivate"]
 	path = PythonPrivate
 	url = https://github.com/abdarum/PythonPrivate.git
+[submodule "Photos_Management/DuplicatedImagesRemover"]
+	path = Photos_Management/DuplicatedImagesRemover
+	url = https://github.com/abdarum/DuplicatedImagesRemover.git
