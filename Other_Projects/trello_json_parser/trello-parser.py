@@ -10,12 +10,12 @@ parser.add_help = True
 args = parser.parse_args()
 
 
-print "Reading Data..."
-with open(os.path.abspath(args.input)) as f:
+print("Reading Data...")
+with open(os.path.abspath(args.input), 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-print "Found {} cards in {} lists.".format(len(data['cards']), len(data['lists']))
-print "Parsing..."
+print("Found {} cards in {} lists.".format(len(data['cards']), len(data['lists'])))
+print("Parsing...")
 
 lists = {l['id']: l['name'] for l in data['lists']}
 users = {u['id']: u['fullName'] for u in data['members']}
@@ -37,8 +37,8 @@ output = {
     "cards": parsed_cards
 }
 
-with open(os.path.abspath(args.output), 'w') as f:
+with open(os.path.abspath(args.output), 'w', ) as f:
     json.dump(output, f, indent=4)
 
-print "Output to {}!s".format(os.path.abspath(args.output))
-print "Please visit https://json-csv.com/ to convert the output to CSV."
+print("Output to {}!s".format(os.path.abspath(args.output)))
+print("Please visit https://json-csv.com/ to convert the output to CSV.")
