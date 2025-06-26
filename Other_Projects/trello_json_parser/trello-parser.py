@@ -20,31 +20,50 @@ class TrelloJsonParser:
                 self,
                 name: str,
                 state: str,
+                pos: int,
             ):
                 self.name = name
                 self.state = state
+                self.pos = pos
+
+            def to_json(self) -> dict:
+                return {
+                    "name": self.name,
+                    "state": self.state,
+                }
 
             @classmethod
             def parse(cls, raw_data: dict) -> Self:
                 return cls(
                     name=raw_data['name'],
-                    state=raw_data['state']
+                    state=raw_data['state'],
+                    pos=raw_data['pos'],
                 )
 
         def __init__(
                 self,
                 name: str,
+                pos: int,
         ):
             self.name = name
+            self.pos = pos
             self.items: list[TrelloJsonParser.Checklist.CheckItem] = []
+
+        def to_json(self) -> dict:
+            return {
+                "name": self.name,
+                "items": self.items,
+            }
 
         @classmethod
         def parse(cls, raw_data: dict) -> Self:
             ret_obj = cls(
-                name=raw_data['name']
+                name=raw_data['name'],
+                pos=raw_data['pos'],
             )
             for raw_check_item in raw_data['checkItems']:
                 ret_obj.items.append(cls.CheckItem.parse(raw_check_item))
+            ret_obj.items.sort(key=lambda x: x.pos)
             return ret_obj
 
     class Card:
@@ -68,7 +87,7 @@ class TrelloJsonParser:
         def parse(
             cls,
             raw_data: dict,
-            lists_dict:dict,
+            lists_dict: dict,
             members_dict: dict,
             labels_dict: dict,
             checklists_dict: dict,
@@ -79,6 +98,7 @@ class TrelloJsonParser:
                       if k in raw_data['idLabels']]
             checklists = [cl for k, cl in checklists_dict.items()
                           if k in raw_data['idChecklists']]
+            checklists.sort(key=lambda x: x.pos)
 
             ret_obj = cls(
                 name=raw_data['name'],
@@ -105,8 +125,8 @@ class TrelloJsonParser:
         self.lists = {}
         self.users = {}
         self.labels = {}
+        self.checklists: dict[str, TrelloJsonParser.Checklist] = {}
         self.cards: list[TrelloJsonParser.Card] = []
-        self.checklists: list[TrelloJsonParser.Checklist] = []
 
     def parse(self):
         self.lists = {l['id']: l['name'] for l in self._raw_data['lists']}
