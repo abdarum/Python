@@ -71,13 +71,17 @@ class TrelloJsonParser:
             self,
             name: str,
             list_name: str,
+            list_id: str,
+            pos: int,
             description: str,
             members: list[str],
             labels: list[str],
             checklists: list = [],
         ):
             self.name = name
+            self.list_id = list_id
             self.list_name = list_name
+            self.pos = pos
             self.description = description
             self.members = members
             self.labels = labels
@@ -87,7 +91,7 @@ class TrelloJsonParser:
         def parse(
             cls,
             raw_data: dict,
-            lists_dict: dict,
+            list_obj,
             members_dict: dict,
             labels_dict: dict,
             checklists_dict: dict,
@@ -100,9 +104,15 @@ class TrelloJsonParser:
                           if k in raw_data['idChecklists']]
             checklists.sort(key=lambda x: x.pos)
 
+            list_id = raw_data['idList']
+            assert isinstance(list_obj, TrelloJsonParser.Lists)
+            list_name = list_obj.get_name(list_id)
+
             ret_obj = cls(
                 name=raw_data['name'],
-                list_name=lists_dict.get(raw_data['idList'], None),
+                list_id=list_id,
+                list_name=list_name,
+                pos=raw_data['pos'],
                 description=raw_data['desc'],
                 members=members,
                 labels=labels,
@@ -120,16 +130,66 @@ class TrelloJsonParser:
                 "checklists": self.checklists,
             }
 
+    class Lists:
+        class List:
+            def __init__(
+                self,
+                name: str,
+                pos: int,
+            ):
+                self.name = name
+                self.pos = pos
+
+            @classmethod
+            def parse(
+                cls,
+                raw_data: dict,
+            ) -> Self:
+                ret_obj = cls(
+                    name=raw_data['name'],
+                    pos=raw_data['pos'],
+                )
+                return ret_obj
+
+        def __init__(
+            self,
+        ):
+            self.lists: dict[str, TrelloJsonParser.Lists.List] = {}
+
+        @classmethod
+        def parse(
+            cls,
+            raw_data: dict,
+        ) -> Self:
+            ret_obj = cls()
+            ret_obj.lists = {l['id']: cls.List.parse(l)for l in raw_data}
+            return ret_obj
+
+        def get_list(self, list_id: str):
+            return self.lists.get(list_id, None)
+
+        def get_pos(self, list_id: str) -> int:
+            list_obj = self.get_list(list_id=list_id)
+            if list_obj:
+                return list_obj.pos
+            return 0
+
+        def get_name(self, list_id: str) -> str | None:
+            list_obj = self.get_list(list_id=list_id)
+            if list_obj:
+                return list_obj.name
+            return None
+
     def __init__(self, trello_json_data: dict):
         self._raw_data = trello_json_data
-        self.lists = {}
+        self.lists = self.Lists()
         self.users = {}
         self.labels = {}
         self.checklists: dict[str, TrelloJsonParser.Checklist] = {}
         self.cards: list[TrelloJsonParser.Card] = []
 
     def parse(self):
-        self.lists = {l['id']: l['name'] for l in self._raw_data['lists']}
+        self.lists = self.Lists.parse(self._raw_data['lists'])
         self.users = {u['id']: u['fullName']
                       for u in self._raw_data['members']}
         self.labels = {l['id']: l['name'] for l in self._raw_data['labels']}
@@ -137,11 +197,12 @@ class TrelloJsonParser:
                            for cl in self._raw_data['checklists']}
         self.cards = [self.Card.parse(
             raw_data=c,
-            lists_dict=self.lists,
+            list_obj=self.lists,
             checklists_dict=self.checklists,
             labels_dict=self.labels,
             members_dict=self.users
         ) for c in self._raw_data['cards']]
+        self.cards.sort(key=lambda x: (self.lists.get_pos(x.list_id), x.pos))
 
     def get_output_dict(self) -> dict:
         output = {
